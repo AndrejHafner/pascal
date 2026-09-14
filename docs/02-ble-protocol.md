@@ -304,3 +304,11 @@ DeviceSource (interface)
 - Open question: confirm iOS Core Bluetooth reliably surfaces manufacturer
   data during scanning for the WH-C06 path — this is the single biggest
   platform-risk item in this doc.
+- Open question, discovered while implementing `WHC06Device` in Phase 2:
+  whether `react-native-ble-plx`'s `Device.manufacturerData` field includes
+  the 2-byte company-identifier prefix ahead of the payload, or has already
+  been stripped by the native layer. The implementation assumes the prefix
+  is present (matching the raw Bluetooth AD structure and Grip Connect's own
+  handling) and strips it before applying the offset-10-11 weight parse —
+  if real scanning shows weight values are numerically nonsensical or the
+  parser rejects every advertisement as too short, check this first.

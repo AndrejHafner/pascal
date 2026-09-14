@@ -116,6 +116,39 @@ reachable on both platforms.
 > **the hardware** is what [Phase H](#phase-h--hardware-validation-deferred)
 > settles. Both are needed; only one needs a device.
 
+**Status: done.** `ProgressorDevice` and `WHC06Device` implement
+`DeviceSource` over `react-native-ble-plx`; byte-fixture parser tests cover
+both devices' happy paths, malformed/truncated packets, and non-finite
+floats; permission-state UI logic is pure and fully tested; a Device screen
+reaches every real device class's connect/tare/sample/battery path and the
+`EmulatorDevice` picker. 103 tests total.
+
+Two real bugs the tests caught in `WHC06Device`, both would have silently
+corrupted every reading on real hardware:
+
+1. **Tare was firing on the very first sample ever received**, before
+   `tare()` was ever called — every untared reading would have read as an
+   offset from an arbitrary first sample rather than the true raw value.
+   Fixed: tare now only captures a baseline after an explicit `tare()` call.
+2. **The 2-byte manufacturer company-id prefix was never stripped** before
+   handing bytes to the weight-field parser, shifting every read by 2 bytes
+   from where docs/02's offset 10-11 actually falls once the id is removed.
+   Fixed: the id is checked and stripped before parsing.
+
+Both were caught by fixture tests using realistically-shaped scan data
+(prefix + payload), not idealized inputs — a reminder that a fixture too
+close to what the code already assumes won't catch an assumption baked into
+the code itself.
+
+Also flagged, not yet resolved: whether `react-native-ble-plx`'s
+`manufacturerData` field actually includes that 2-byte prefix on real
+hardware is unconfirmed (the ble-plx types only say "format defined by
+manufacturer") — an explicit ASSUMPTION comment sits at the strip site, and
+this is now a named check in [Phase H](#phase-h--hardware-validation-deferred).
+Android location-services detection (the `location_services_off` UI branch)
+is implemented and tested in the pure logic but not yet wired to a real
+native check — deferred to Phase 4/5, tracked in a code comment.
+
 ## Phase 3 — Metrics & protocol engine
 
 Pure logic. No UI. This is where correctness lives.

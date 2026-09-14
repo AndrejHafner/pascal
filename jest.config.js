@@ -1,7 +1,7 @@
 module.exports = {
   preset: 'jest-expo',
   restoreMocks: true,
-  testPathIgnorePatterns: ['/node_modules/', '/__tests__/testUtils/'],
+  testPathIgnorePatterns: ['/node_modules/', '/testUtils/', '/fixtures/'],
   transformIgnorePatterns: [
     'node_modules/(?!((jest-)?react-native|@react-native(-community)?)|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@unimodules/.*|unimodules|sentry-expo|native-base|react-native-svg)',
   ],
