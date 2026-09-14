@@ -165,6 +165,43 @@ final computations agree on all emulator sequences; the machine handles
 `DEVICE_LOST` mid-effort correctly in tests; and a full emulated session
 runs start-to-finish headlessly, persisting correct efforts and metrics.
 
+**Status: done.** `rollingPeak` (trailing time-weighted windowed mean, not
+a naive arithmetic mean — correct for the unevenly-spaced samples the real
+pipeline produces), `tut` (in/above/below bucketing with the exact
+`[target-tolerance, target+tolerance]` boundary semantics, TUT = in +
+above), `impulse`, `fatigueIndex`, and `asymmetry` are all pure functions
+with incremental/final agreement tests. `prescribeTargetForce` handles
+`no_max` and stale-max (6-week default, per docs/04) as real, typed
+outcomes rather than edge cases bolted on. The session machine implements
+every phase and event from docs/07 exactly, including that `DEVICE_RESTORED`
+after a mid-working loss returns to `armed`, never directly to `working` —
+per docs/04's "never silently resume, since the gap corrupts TUT." 141 new
+tests, including a headless integration test that drives a real
+`EmulatorDevice` sequence through the state machine and the metrics
+functions into real SQLite via the actual repositories, then asserts on
+what actually landed in the database.
+
+Two gaps were caught in review before any test ran — worth recording
+because they're exactly the kind of bug a narrower, transition-at-a-time
+test suite would have missed entirely:
+
+1. The first draft's `TICK` handler didn't include `'working'` among its
+   timed phases at all — work duration elapsing had no effect, so a set
+   would stay in `working` forever once armed.
+2. There was no path from `working` to `setRest`, only to `interHandRest`
+   — a session would loop the same two hands forever and never advance to
+   the next set or reach `done`.
+
+Fixed by adding `finishWorking()`, the shared exit path from `working` that
+checks whether the finishing hand was the last one in `plan.hands` and
+routes to `setRest` instead of `interHandRest` when it was. The lesson
+carried into the test suite: the full-session integration test (driving a
+real `EmulatorDevice` sequence through the whole machine to `done`) is what
+would have caught this if it hadn't been — per-transition unit tests can
+all pass while the transitions still don't compose into a working whole,
+which is why that end-to-end test is treated as load-bearing, not optional
+polish.
+
 ## Phase 4 — Live session screen
 
 Now build the screen the whole app exists for.
