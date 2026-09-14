@@ -1,0 +1,34 @@
+node_modules/
+.expo/
+dist/
+web-build/
+*.tsbuildinfo
+
+# Native build output
+ios/
+android/
+*.ipa
+*.apk
+*.aab
+
+# EAS
+.easignore
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+
+# Editor / OS
+.DS_Store
+.idea/
+*.swp
+
+# Logs
+*.log
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# Test / coverage
+coverage/
