@@ -1,0 +1,106 @@
+import type { SQLiteDatabase } from 'expo-sqlite'
+import type { Migration } from '../migrator'
+
+// Mirrors schema.sql exactly. schema.sql is the readable reference for the
+// *current* shape; this file is what actually runs against a real
+// (or fresh) database. Keep them in sync when adding a migration.
+export const migration0001Initial: Migration = {
+  version: 1,
+  name: 'initial',
+  up: async (db: SQLiteDatabase) => {
+    await db.execAsync(`
+      CREATE TABLE exercise (
+        id            TEXT PRIMARY KEY,
+        name          TEXT NOT NULL,
+        grip_type     TEXT NOT NULL,
+        edge_depth_mm REAL NOT NULL,
+        modality      TEXT NOT NULL CHECK (modality IN ('block_pull','hang')),
+        notes         TEXT,
+        created_at    INTEGER NOT NULL
+      );
+
+      CREATE TABLE session (
+        id             TEXT PRIMARY KEY,
+        started_at     INTEGER NOT NULL,
+        ended_at       INTEGER,
+        bodyweight_kg  REAL NOT NULL,
+        notes          TEXT
+      );
+
+      CREATE TABLE training_set (
+        id                   TEXT PRIMARY KEY,
+        session_id           TEXT NOT NULL REFERENCES session(id) ON DELETE CASCADE,
+        exercise_id          TEXT NOT NULL REFERENCES exercise(id),
+        kind                 TEXT NOT NULL CHECK (kind IN ('max_effort','target_band','all_out')),
+        ordinal              INTEGER NOT NULL,
+
+        source_max_effort_id TEXT REFERENCES effort(id),
+        target_percent       REAL,
+        target_force_kg      REAL,
+        tolerance_band_kg    REAL,
+        planned_work_ms      INTEGER,
+
+        rep_work_ms          INTEGER,
+        rep_rest_ms          INTEGER,
+        rep_count            INTEGER,
+
+        inter_hand_rest_ms   INTEGER NOT NULL,
+        inter_set_rest_ms    INTEGER NOT NULL,
+
+        UNIQUE (session_id, ordinal)
+      );
+
+      CREATE TABLE effort (
+        id                TEXT PRIMARY KEY,
+        set_id            TEXT NOT NULL REFERENCES training_set(id) ON DELETE CASCADE,
+        hand              TEXT NOT NULL CHECK (hand IN ('left','right')),
+        started_at        INTEGER NOT NULL,
+        ended_at          INTEGER,
+        status            TEXT NOT NULL CHECK (status IN ('completed','aborted','disconnected')),
+        added_load_kg     REAL NOT NULL DEFAULT 0,
+        device_type       TEXT NOT NULL,
+        device_sequence   TEXT,
+        sample_rate_hz    REAL,
+
+        peak_force_smoothed_kg REAL,
+        smoothing_window_ms    INTEGER,
+        peak_force_instant_kg  REAL,
+        mean_force_kg          REAL,
+        impulse_kg_s           REAL,
+        time_under_tension_ms  INTEGER,
+        time_in_band_ms        INTEGER,
+        time_above_band_ms     INTEGER,
+        time_below_band_ms     INTEGER,
+        time_to_peak_ms        INTEGER,
+        time_to_target_ms      INTEGER,
+        fatigue_index          REAL,
+
+        UNIQUE (set_id, hand)
+      );
+
+      CREATE TABLE sample (
+        effort_id  TEXT NOT NULL REFERENCES effort(id) ON DELETE CASCADE,
+        offset_ms  INTEGER NOT NULL,
+        force_kg   REAL NOT NULL,
+        PRIMARY KEY (effort_id, offset_ms)
+      ) WITHOUT ROWID;
+
+      CREATE TABLE max_record (
+        id                    TEXT PRIMARY KEY,
+        exercise_id           TEXT NOT NULL REFERENCES exercise(id),
+        hand                  TEXT NOT NULL,
+        effort_id             TEXT NOT NULL REFERENCES effort(id),
+        force_kg              REAL NOT NULL,
+        smoothing_window_ms   INTEGER NOT NULL,
+        rule                  TEXT NOT NULL DEFAULT 'best_attempt',
+        bodyweight_kg_at_test REAL NOT NULL,
+        recorded_at           INTEGER NOT NULL
+      );
+
+      CREATE INDEX idx_set_session     ON training_set(session_id, ordinal);
+      CREATE INDEX idx_effort_set      ON effort(set_id);
+      CREATE INDEX idx_session_started ON session(started_at DESC);
+      CREATE INDEX idx_max_lookup      ON max_record(exercise_id, hand, recorded_at DESC);
+    `)
+  },
+}

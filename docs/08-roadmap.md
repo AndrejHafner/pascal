@@ -67,7 +67,7 @@ Build the substrate everything else is developed and tested against.
 - Full schema from [07](07-architecture.md) + migration runner
 - Repositories for exercise / session / set / effort / sample / max
 - `DeviceSource` interface and `EmulatorDevice` with all five sequences
-  (`steady-hang`, `repeaters`, `noisy-pull`, `dropout`, `slow-whc06`)
+  (`steady-pull`, `repeaters`, `noisy-pull`, `dropout`, `slow-whc06`)
 - Ring buffer + drain loop, wired emulator → buffer → batched insert
 - A throwaway debug screen showing live numbers from the emulator
 
@@ -75,6 +75,20 @@ Build the substrate everything else is developed and tested against.
 SQLite at the expected rate, a 60 s emulated effort produces the expected
 row count with no dropped samples, migrations run clean on a fresh install,
 and repository tests pass in CI.
+
+**Status: done.** Schema, migrations, all six repositories, `DeviceSource`,
+`EmulatorDevice` with all five sequences, ring buffer, drain loop, and the
+debug-emulator screen are built and tested — 44 tests, including an
+end-to-end emulator→buffer→SQLite pipeline test asserting exact row counts
+and zero drops against a real SQLite engine (`better-sqlite3` in tests,
+`expo-sqlite` on-device).
+
+One implementation note worth recording: `newId()` originally used
+`expo-crypto`'s `randomUUID()`, which silently returns `undefined` under
+Jest's native-module auto-mock (no error) — a real trap, since `undefined`
+was quietly accepted by some NOT NULL columns before a test caught it.
+Switched to the global `crypto.randomUUID()` (Web Crypto, native on Hermes/
+RN 0.76+ and in Node/Jest), dropping the `expo-crypto` dependency entirely.
 
 ## Phase 2 — BLE implementation
 

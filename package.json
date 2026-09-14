@@ -21,8 +21,10 @@
   },
   "devDependencies": {
     "@react-native/jest-preset": "^0.86.3",
+    "@types/better-sqlite3": "^9.6.0",
     "@types/jest": "^30.0.0",
     "@types/react": "~19.2.2",
+    "better-sqlite3": "^13.0.3",
     "eslint": "^9.39.5",
     "eslint-config-expo": "~57.0.2",
     "jest": "^30.5.1",

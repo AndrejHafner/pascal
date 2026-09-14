@@ -272,8 +272,11 @@ DeviceSource (interface)
   instantly, so downstream code (ring buffer, chart, batched DB writes) is
   exercised realistically.
 - Must support **multiple named sequences**, at minimum:
-  - `steady-hang` — flat force plateau around a target value, for testing
-    basic max-hang / time-in-zone logic
+  - `steady-pull` (named `steady-hang` in earlier drafts of this doc, before
+    the "block pull, not hangs" terminology in
+    [03-training-and-data-model.md](03-training-and-data-model.md) — renamed
+    in code to match) — flat force plateau around a target value, for
+    testing basic max-effort / time-under-tension logic
   - `repeaters` — on/off cycling pattern, for testing rep-counting logic
   - `noisy-pull` — a ramp-up, noisy plateau, ramp-down, to exercise
     peak/mean/smoothing logic against realistic jitter, not a perfect signal
