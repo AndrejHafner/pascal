@@ -78,13 +78,13 @@ Establishes the baseline. Sources disagree on parameters; Pascal should make
 them configurable with defaults drawn from the load-cell-specific literature
 rather than the hang-based literature.
 
-| Parameter | Default | Source / note |
-|---|---|---|
-| Pull duration | 3–5 s | Labott 3 s; Camp4/critical-force work 5 s |
-| Attempts per hand | 3 | Labott 3; Tyler Nelson 3–4 |
-| Rest between attempts | 90 s – 3 min | Labott 90 s; Nelson 3–4 min between sets |
-| Force onset | slow ramp, not a jerk | Tyler Nelson's load-cell block-pull guidance |
-| Max metric | peak of 3 s rolling mean | Labott (see above) |
+| Parameter             | Default                  | Source / note                                |
+| --------------------- | ------------------------ | -------------------------------------------- |
+| Pull duration         | 3–5 s                    | Labott 3 s; Camp4/critical-force work 5 s    |
+| Attempts per hand     | 3                        | Labott 3; Tyler Nelson 3–4                   |
+| Rest between attempts | 90 s – 3 min             | Labott 90 s; Nelson 3–4 min between sets     |
+| Force onset           | slow ramp, not a jerk    | Tyler Nelson's load-cell block-pull guidance |
+| Max metric            | peak of 3 s rolling mean | Labott (see above)                           |
 
 Note the competing convention: **Lattice uses 7 s weighted hangs**, where
 "max" is a load survived for 7 s, not a force reading. That's the dominant
@@ -104,7 +104,7 @@ The core training mode, and Pascal's main differentiator.
   duration, rest, number of sets.
 - **Time-under-tension accumulates while force is at or above the lower
   bound** — i.e. `force >= target − tolerance`. Pulling harder than the
-  target still counts as working; only falling *below* the band stops the
+  target still counts as working; only falling _below_ the band stops the
   clock.
 - Time is still **bucketed** three ways for review — in-band, above-band,
   below-band — so a set held consistently on-target is distinguishable from
@@ -122,12 +122,12 @@ or that the source max is stale.
 **Honesty note:** no established protocol in the literature defines a
 tolerance band around a target force — this is a Pascal design decision, not
 a published method. The closest academic grounding is work on optimizing
-intermittent finger endurance tests with respect to *deviation in force and
-pulling time* (PMC9168274). Worth stating plainly rather than implying
+intermittent finger endurance tests with respect to _deviation in force and
+pulling time_ (PMC9168274). Worth stating plainly rather than implying
 scientific backing it doesn't have.
 
 Consider also recording **impulse** (force × time) alongside band-TUT —
-impulse is the literature-standard "true" work measure and weights *how hard*
+impulse is the literature-standard "true" work measure and weights _how hard_
 you pulled, not merely whether you were inside a band. Band-TUT is the
 prescriptive metric; impulse is the more defensible descriptive one.
 
@@ -140,14 +140,14 @@ Anderson brothers.
 Two established parameter sets that disagree, because "set" means different
 things:
 
-| | Hörst / classic | Lattice (anaerobic capacity) | Lattice (aerobic power) |
-|---|---|---|---|
-| Reps | 6 × (7s/3s) | 5 × (7s/3s) | 12 × (7s/3s) |
-| Intensity | 60–80% MVC (40–50% beginners) | 80% of max | 50–60% of max |
-| Rest between sets | 12–15 min | 2.5 min | 4 min |
-| Rest between grips | 2–3 min | — | — |
+|                    | Hörst / classic               | Lattice (anaerobic capacity) | Lattice (aerobic power) |
+| ------------------ | ----------------------------- | ---------------------------- | ----------------------- |
+| Reps               | 6 × (7s/3s)                   | 5 × (7s/3s)                  | 12 × (7s/3s)            |
+| Intensity          | 60–80% MVC (40–50% beginners) | 80% of max                   | 50–60% of max           |
+| Rest between sets  | 12–15 min                     | 2.5 min                      | 4 min                   |
+| Rest between grips | 2–3 min                       | —                            | —                       |
 
-The 12–15 min vs 2.5 min gap is *not* a contradiction — Hörst's "set" is a
+The 12–15 min vs 2.5 min gap is _not_ a contradiction — Hörst's "set" is a
 full circuit of 3–7 grip positions, Lattice's is one 50 s block. See
 [Naming: rep / set / block / session](#naming-rep--set--block--session).
 
@@ -170,7 +170,7 @@ strength.
 else needs (plateau detection, CF/W′ computation, a handled "no plateau"
 outcome), and it measures endurance while 01-overview.md's stated v1 goal is
 strength testing and percentage-based strength training. Documented here
-because the data model should not *preclude* it — an all-out CF test is
+because the data model should not _preclude_ it — an all-out CF test is
 structurally a repeater set with no target band, so `Set.kind` will need a
 third value later rather than a restructure.
 
@@ -180,12 +180,12 @@ third value later rather than a restructure.
   - **CF** = mean force of the last 30 s (final 3 contractions); some
     sources use the last 6 contractions
   - **CFmin** = mean of the lowest force value in the last three
-    contractions — found *more* reliable in 2024 validation
+    contractions — found _more_ reliable in 2024 validation
 - Reported as **CF/PF (% of peak force)** rather than absolute. Typical:
   CF ≈ 20.1 ± 5.7 kg ≈ 38.8 ± 8.8% of MVC.
 - **W′** = impulse accumulated above CF (finite anaerobic capacity).
 - Caveats worth encoding: the common "40% MVC" endurance rule of thumb does
-  *not* reliably match individual CF — which is the whole argument for
+  _not_ reliably match individual CF — which is the whole argument for
   measuring it. And **~6% of climbers never reach a force plateau**;
   validated for climbers redpointing ≥ f7a / bouldering ≥ V5. **"No plateau
   detected" must be a real, handled outcome, not an error state.**
@@ -202,7 +202,7 @@ Citable parameters from the 2024 controlled study:
 - Honest results framing: Abrahangs alone **+2.5% (non-significant)**; max
   hangs alone +3.2% (p=0.0005); **combined +5.8% (p<0.01)**. The popular
   "as effective as max hangs" claim is overstated — the real finding is
-  *additive when combined*. Don't let the app imply otherwise.
+  _additive when combined_. Don't let the app imply otherwise.
 
 ## Bilateral (left/right) training structure
 
@@ -220,7 +220,7 @@ Set N:  [left hand work] → short inter-hand rest → [right hand work]
 ```
 
 - **Inter-hand rest:** short. Tyler Nelson's block-pull protocol uses
-  **~5 s between hands**. (One-arm *hang* protocols use 90 s — but that's a
+  **~5 s between hands**. (One-arm _hang_ protocols use 90 s — but that's a
   different modality; the 5 s figure matches Pascal's.) Default short,
   configurable.
 - **Inter-set rest:** the real recovery, after both hands. Defaults by goal:
@@ -258,7 +258,7 @@ So: make the flagging threshold **user-configurable, default 5%**, and label
 it in-app as a heuristic rather than an evidence-based cutoff. Show the trend;
 don't nag.
 
-(Supporting Pascal's design: bilateral protocols *mask* asymmetry — dedicated
+(Supporting Pascal's design: bilateral protocols _mask_ asymmetry — dedicated
 unilateral testing is the recommended way to quantify it.)
 
 ## Naming: rep / set / block / session
@@ -455,7 +455,7 @@ Training-science claims above are grounded in:
 - [Labott et al. 2022 — Tindeq validity & reliability (Frontiers)](https://tindeq.com/wp-content/uploads/fspor-04-838358.pdf) — 3 s moving average, ICC/CV, warm-up
 - [Reliability of finger strength assessment methods in climbing: systematic review (2025)](https://pmc.ncbi.nlm.nih.gov/articles/PMC12521219/) — ICC ranges, 20–23 mm edges, RFD reliability
 - [Measuring critical force in sport climbers: 4-min all-out validation](https://pmc.ncbi.nlm.nih.gov/articles/PMC11365833/) — CF vs CFmin
-- [Giles et al. — all-out test for finger flexor critical force](https://eprints.glos.ac.uk/8771/1/8771-Fryer-(2020)-An-all-out-test-to-determine.pdf)
+- [Giles et al. — all-out test for finger flexor critical force](<https://eprints.glos.ac.uk/8771/1/8771-Fryer-(2020)-An-all-out-test-to-determine.pdf>)
 - [Effects of Different Loading Programs on Finger Strength in Rock Climbers (2024)](https://pmc.ncbi.nlm.nih.gov/articles/PMC11576708/) — Abrahangs
 - [Lattice Testing & Training Rung Instructions (PDF)](https://latticetraining.com/app/uploads/2018/06/1528799872597_180503_Lattice-Testing-Training-Rung-Instructions.pdf)
 - [Lattice — Do strength imbalances make a difference in climbing?](https://latticetraining.com/blog/do-strength-imbalances-make-a-difference-in-climbing/) — ~1.6 kg average asymmetry

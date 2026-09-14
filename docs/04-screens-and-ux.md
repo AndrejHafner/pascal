@@ -13,24 +13,24 @@ anchored under your feet.** That single fact drives most decisions here:
 - Anything requiring fine input (notes, config, editing) happens **before or
   after** a set, never during.
 
-When a UX decision is contested below, the tiebreaker is: *does this work
-when you're mid-pull and can't really look at the screen?*
+When a UX decision is contested below, the tiebreaker is: _does this work
+when you're mid-pull and can't really look at the screen?_
 
 ## Screen inventory
 
-| Screen | Purpose |
-|---|---|
-| **Home / Today** | Entry point. Device status, start a session, recent activity. |
-| **Device** | Scan, connect, battery, tare, live raw readout, emulator toggle (dev). |
-| **Exercise list / editor** | Manage exercises (name, grip, edge depth, modality). |
-| **Session setup** | Pick exercise + protocol, configure the set structure. |
-| **Live session** | The core screen. Runs the whole session: work, rest, hand switching. |
-| **Set summary** | Immediately after each set — what just happened, per hand. |
-| **Session summary** | End of workout — totals, asymmetry, notes, save. |
-| **History (list)** | All past sessions, chronological. |
-| **Session detail** | Drill into a past session → sets → per-hand force curves. |
-| **Progress** | Max progression, asymmetry trend, training load over time. |
-| **Settings** | Bodyweight, units, cue preferences, thresholds, export, about. |
+| Screen                     | Purpose                                                                |
+| -------------------------- | ---------------------------------------------------------------------- |
+| **Home / Today**           | Entry point. Device status, start a session, recent activity.          |
+| **Device**                 | Scan, connect, battery, tare, live raw readout, emulator toggle (dev). |
+| **Exercise list / editor** | Manage exercises (name, grip, edge depth, modality).                   |
+| **Session setup**          | Pick exercise + protocol, configure the set structure.                 |
+| **Live session**           | The core screen. Runs the whole session: work, rest, hand switching.   |
+| **Set summary**            | Immediately after each set — what just happened, per hand.             |
+| **Session summary**        | End of workout — totals, asymmetry, notes, save.                       |
+| **History (list)**         | All past sessions, chronological.                                      |
+| **Session detail**         | Drill into a past session → sets → per-hand force curves.              |
+| **Progress**               | Max progression, asymmetry trend, training load over time.             |
+| **Settings**               | Bodyweight, units, cue preferences, thresholds, export, about.         |
 
 ## Navigation structure
 
@@ -125,13 +125,13 @@ important visual affordance, and it's carried by the chart rather than a
 full-screen tint so the signal stays attached to the data (and so a dark gym
 doesn't get a full-brightness color wash):
 
-| State | Plot appearance | Meaning |
-|---|---|---|
-| Below band | greyed out / desaturated, thinner trace | clock stopped, pull harder |
-| In band | green band + green trace, slightly thicker | clock running, on target |
-| Above band | teal shift of the same green | clock running, above target |
+| State      | Plot appearance                            | Meaning                     |
+| ---------- | ------------------------------------------ | --------------------------- |
+| Below band | greyed out / desaturated, thinner trace    | clock stopped, pull harder  |
+| In band    | green band + green trace, slightly thicker | clock running, on target    |
+| Above band | teal shift of the same green               | clock running, above target |
 
-Only the *live* portion of the trace recolors — already-drawn history keeps
+Only the _live_ portion of the trace recolors — already-drawn history keeps
 the color it had when recorded, so the curve doubles as a visual timeline of
 when you were in or out of the zone.
 
@@ -153,7 +153,7 @@ announced:
   clock started without needing to look.
 - **Dropping below the band:** a distinct falling tone + sharper haptic.
   This is the most important cue in the app: it's the one telling you to
-  pull harder *right now*.
+  pull harder _right now_.
 - **TUT target reached:** success tone + strong haptic — "you can let go."
 - **Rest ending:** a 3-2-1 countdown cue so you can get set up in time.
 - **Hand switch:** spoken or distinctly toned "right hand" cue.
@@ -162,14 +162,14 @@ Because Pascal uses **tones only, no speech**, the tones carry the entire
 message and must be distinguishable from each other without context —
 differentiate by **pitch direction and pattern**, not just pitch:
 
-| Event | Tone shape |
-|---|---|
-| Countdown tick / go | three short ticks, then one longer higher tone |
-| Entered band | short **rising** two-note |
-| Dropped below band | short **falling** two-note, louder/sharper than the others |
-| TUT target reached | three-note **ascending** flourish |
-| Hand switch | distinct double-beep, unlike any single-event cue |
-| Rest ending | same countdown pattern as set start, so it's learned once |
+| Event               | Tone shape                                                 |
+| ------------------- | ---------------------------------------------------------- |
+| Countdown tick / go | three short ticks, then one longer higher tone             |
+| Entered band        | short **rising** two-note                                  |
+| Dropped below band  | short **falling** two-note, louder/sharper than the others |
+| TUT target reached  | three-note **ascending** flourish                          |
+| Hand switch         | distinct double-beep, unlike any single-event cue          |
+| Rest ending         | same countdown pattern as set start, so it's learned once  |
 
 Reusing the countdown pattern for both "set starting" and "rest ending" is
 deliberate — fewer distinct sounds to learn, and context makes it
@@ -320,19 +320,19 @@ is used productively and you get feedback while it's relevant:
 Every list and chart needs three designed states — empty, error, loading —
 plus these specific ones:
 
-| Situation | Behavior |
-|---|---|
-| No sessions yet | Today shows a guided "connect your device → create an exercise → run a max test" first-run path, not an empty list. |
-| No exercises defined | Session setup routes to exercise creation first. |
-| No max recorded for exercise | Target-band setup is blocked with a clear "run a max test first" CTA — a % of nothing is meaningless. |
-| Max is stale | Non-blocking retest suggestion (see above). |
-| Bluetooth off / permission denied | Specific, actionable copy per case; deep-link to settings where possible. |
-| Device not found while scanning | Distinguish "still scanning" from "nothing found" after a timeout; suggest the device may be asleep (Progressor sleeps). |
-| Disconnect mid-set | Pause clock, freeze chart, offer resume/redo; never flatline to zero. |
-| App backgrounded mid-set | Treat as an interruption: pause, mark the set, offer resume on return. Don't pretend the data is continuous. |
-| App killed mid-session | Resume card on Today next launch. |
-| Force reads negative | Possible on Progressor (sign flips with direction, per [02](02-ble-protocol.md)). Clamp display at 0 and prompt a tare rather than showing a negative number. |
-| Battery low (Progressor) | Passive warning on Device screen and at session start — not mid-set. |
+| Situation                         | Behavior                                                                                                                                                      |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| No sessions yet                   | Today shows a guided "connect your device → create an exercise → run a max test" first-run path, not an empty list.                                           |
+| No exercises defined              | Session setup routes to exercise creation first.                                                                                                              |
+| No max recorded for exercise      | Target-band setup is blocked with a clear "run a max test first" CTA — a % of nothing is meaningless.                                                         |
+| Max is stale                      | Non-blocking retest suggestion (see above).                                                                                                                   |
+| Bluetooth off / permission denied | Specific, actionable copy per case; deep-link to settings where possible.                                                                                     |
+| Device not found while scanning   | Distinguish "still scanning" from "nothing found" after a timeout; suggest the device may be asleep (Progressor sleeps).                                      |
+| Disconnect mid-set                | Pause clock, freeze chart, offer resume/redo; never flatline to zero.                                                                                         |
+| App backgrounded mid-set          | Treat as an interruption: pause, mark the set, offer resume on return. Don't pretend the data is continuous.                                                  |
+| App killed mid-session            | Resume card on Today next launch.                                                                                                                             |
+| Force reads negative              | Possible on Progressor (sign flips with direction, per [02](02-ble-protocol.md)). Clamp display at 0 and prompt a tare rather than showing a negative number. |
+| Battery low (Progressor)          | Passive warning on Device screen and at session start — not mid-set.                                                                                          |
 
 ## Accessibility & practical constraints
 

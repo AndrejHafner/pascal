@@ -139,7 +139,7 @@ Rules:
 Deriving TUT from rendered frames would tie a data metric to display timing;
 each sample contributes its own inter-sample interval to the appropriate
 bucket. When samples are missing (disconnect), that interval contributes to
-*nothing* — a gap, not an assumption ([06](06-non-functional-and-open-source.md)).
+_nothing_ — a gap, not an assumption ([06](06-non-functional-and-open-source.md)).
 
 ## BLE layer
 
@@ -149,8 +149,8 @@ One interface, three implementations, per [02](02-ble-protocol.md):
 interface DeviceSource {
   readonly kind: 'progressor' | 'whc06' | 'emulator'
   readonly capabilities: {
-    hardwareTare: boolean      // Progressor yes, WH-C06 no
-    battery: boolean           // Progressor yes, WH-C06 no
+    hardwareTare: boolean // Progressor yes, WH-C06 no
+    battery: boolean // Progressor yes, WH-C06 no
     requiresConnection: boolean // WH-C06 is advertisement-only
   }
   connect(): Promise<void>
@@ -164,13 +164,13 @@ interface DeviceSource {
 
 The two real devices share almost nothing operationally:
 
-| | Progressor | WH-C06 |
-|---|---|---|
-| Lifecycle | connect → discover → monitor | scan continuously |
-| Start streaming | write `0x65` | n/a (always broadcasting) |
-| Tare | hardware (`0x64`) | software baseline |
-| Disconnect detection | GATT event | 10 s advertisement watchdog |
-| Battery | yes | no |
+|                      | Progressor                   | WH-C06                      |
+| -------------------- | ---------------------------- | --------------------------- |
+| Lifecycle            | connect → discover → monitor | scan continuously           |
+| Start streaming      | write `0x65`                 | n/a (always broadcasting)   |
+| Tare                 | hardware (`0x64`)            | software baseline           |
+| Disconnect detection | GATT event                   | 10 s advertisement watchdog |
+| Battery              | yes                          | no                          |
 
 `capabilities` exists so the UI can adapt without type-checking the device
 (`getBattery` simply absent on WH-C06). **Tare is presented identically in
@@ -420,36 +420,36 @@ mitigation flagged in [06](06-non-functional-and-open-source.md).
 Per [06](06-non-functional-and-open-source.md), shaped around BLE being
 untestable in CI:
 
-| Layer | How |
-|---|---|
-| Parsers | Byte fixtures per device. **Non-negotiable** — a parser regression silently corrupts plausible-looking data. |
-| Metrics | Known input curves → known outputs; incremental vs. final agreement. |
-| State machine | Canned event sequences, including `DEVICE_LOST` mid-set. |
-| Prescription | % of max → target force, including stale-max and missing-max cases. |
-| Integration | Emulator sequences driving the real pipeline end-to-end in CI. |
-| Real hardware | Written pre-release checklist. Cannot be automated. |
+| Layer         | How                                                                                                          |
+| ------------- | ------------------------------------------------------------------------------------------------------------ |
+| Parsers       | Byte fixtures per device. **Non-negotiable** — a parser regression silently corrupts plausible-looking data. |
+| Metrics       | Known input curves → known outputs; incremental vs. final agreement.                                         |
+| State machine | Canned event sequences, including `DEVICE_LOST` mid-set.                                                     |
+| Prescription  | % of max → target force, including stale-max and missing-max cases.                                          |
+| Integration   | Emulator sequences driving the real pipeline end-to-end in CI.                                               |
+| Real hardware | Written pre-release checklist. Cannot be automated.                                                          |
 
 ## Key decisions
 
-| Decision | Rationale |
-|---|---|
-| `core/` has zero framework imports | Correctness-critical math testable without hardware or React |
-| Ring buffer + timed drain | Only way to hit 60 Hz without blocking the BLE callback |
-| Chart bypasses React state | Per-sample `setState` at 60 Hz is not viable |
-| Session machine is a pure reducer | Makes disconnect/interruption paths testable |
-| `sample` is `WITHOUT ROWID` | Halves cost on the only table that gets large |
-| `'all_out'` in the CHECK now | SQLite `CHECK` changes need a table rebuild; free to add now |
-| No UI kit | ~12 components; the important screen is a custom Skia canvas |
-| Parsers pure, separate from transport | Makes the fixture tests 06 requires trivial |
+| Decision                              | Rationale                                                    |
+| ------------------------------------- | ------------------------------------------------------------ |
+| `core/` has zero framework imports    | Correctness-critical math testable without hardware or React |
+| Ring buffer + timed drain             | Only way to hit 60 Hz without blocking the BLE callback      |
+| Chart bypasses React state            | Per-sample `setState` at 60 Hz is not viable                 |
+| Session machine is a pure reducer     | Makes disconnect/interruption paths testable                 |
+| `sample` is `WITHOUT ROWID`           | Halves cost on the only table that gets large                |
+| `'all_out'` in the CHECK now          | SQLite `CHECK` changes need a table rebuild; free to add now |
+| No UI kit                             | ~12 components; the important screen is a custom Skia canvas |
+| Parsers pure, separate from transport | Makes the fixture tests 06 requires trivial                  |
 
 ## Open questions
 
 - **Sample retention.** Millions of rows accumulate over years. Keep raw
   samples forever (simple, honest, ~50 MB/year at heavy use), or downsample
-  efforts older than N months? Defaulting to *keep everything* until storage
+  efforts older than N months? Defaulting to _keep everything_ until storage
   is demonstrably a problem — discarding measurements conflicts with
   [06](06-non-functional-and-open-source.md)'s data-integrity stance.
 - **Ring buffer overflow behavior** if the drain is starved (app hitch): drop
-  oldest, drop newest, or grow? Dropping *anything* silently conflicts with
+  oldest, drop newest, or grow? Dropping _anything_ silently conflicts with
   data integrity — leaning toward recording an explicit gap marker so the
   loss is visible rather than invisible.

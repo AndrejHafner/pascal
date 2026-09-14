@@ -15,7 +15,7 @@ Principles, in priority order:
 2. **Dark only.** Gyms are dim, phones sit on the floor, and a white screen
    at arm's length is unpleasant. There is no light mode.
 3. **Calm by default, loud only when it matters.** Almost the entire UI is
-   neutral greys. Color is reserved for *state that changes behavior* —
+   neutral greys. Color is reserved for _state that changes behavior_ —
    overwhelmingly, whether the TUT clock is running.
 4. **No gamification.** No streaks, badges, confetti, or motivational copy.
    A PB gets a quiet acknowledgment. This is a personal instrument;
@@ -26,7 +26,7 @@ Principles, in priority order:
 
 Reference points: Teenage Engineering / Eurorack panel legibility, Tindeq's
 own utilitarian readout, Apple's Workout app for glanceable metric
-hierarchy. Explicitly *not*: Strava's social-first styling.
+hierarchy. Explicitly _not_: Strava's social-first styling.
 
 ## Color palette
 
@@ -41,32 +41,32 @@ specified and no component may branch on color scheme.
 
 ### Neutrals (the vast majority of the UI)
 
-| Token | Value | Use |
-|---|---|---|
-| `bg` | `#0B0D0E` | App background |
-| `surface` | `#15191B` | Cards, sheets |
-| `surfaceRaised` | `#1E2325` | Elevated / pressed |
-| `border` | `#2A3033` | Hairlines, dividers |
-| `textPrimary` | `#F2F4F5` | Numbers, headings |
-| `textSecondary` | `#9BA5A9` | Labels, units |
-| `textTertiary` | `#616C70` | Hints, disabled |
+| Token           | Value     | Use                 |
+| --------------- | --------- | ------------------- |
+| `bg`            | `#0B0D0E` | App background      |
+| `surface`       | `#15191B` | Cards, sheets       |
+| `surfaceRaised` | `#1E2325` | Elevated / pressed  |
+| `border`        | `#2A3033` | Hairlines, dividers |
+| `textPrimary`   | `#F2F4F5` | Numbers, headings   |
+| `textSecondary` | `#9BA5A9` | Labels, units       |
+| `textTertiary`  | `#616C70` | Hints, disabled     |
 
 ### Semantic / state colors
 
 The critical constraint from [04](04-screens-and-ux.md): **above-band must
-not read as error.** Above-band is *counted work*. So the palette has no
+not read as error.** Above-band is _counted work_. So the palette has no
 "too high is bad" color in the live zone model at all.
 
-| Token | Value | Meaning |
-|---|---|---|
-| `zoneBelow` | `#2A3033` | Clock stopped — deliberately colorless/grey |
-| `zoneIn` | `#2FBF71` | In band, clock running |
+| Token       | Value     | Meaning                                                                       |
+| ----------- | --------- | ----------------------------------------------------------------------------- |
+| `zoneBelow` | `#2A3033` | Clock stopped — deliberately colorless/grey                                   |
+| `zoneIn`    | `#2FBF71` | In band, clock running                                                        |
 | `zoneAbove` | `#39C7A0` | Above band, clock running — a **teal shift of the same green**, not a new hue |
-| `accent` | `#4C9EEB` | Interactive elements, links, selection |
-| `warning` | `#E0A73D` | Stale max, low battery, asymmetry note |
-| `danger` | `#E4574C` | Disconnect, destructive actions, permission errors |
+| `accent`    | `#4C9EEB` | Interactive elements, links, selection                                        |
+| `warning`   | `#E0A73D` | Stale max, low battery, asymmetry note                                        |
+| `danger`    | `#E4574C` | Disconnect, destructive actions, permission errors                            |
 
-`zoneIn` → `zoneAbove` is intentionally a *small* hue shift along the
+`zoneIn` → `zoneAbove` is intentionally a _small_ hue shift along the
 green–teal axis. It communicates "still good, but you've drifted up" without
 ever crossing into a color that means stop or failure. `danger` is reserved
 strictly for things that are actually wrong — disconnects, errors, deletes —
@@ -77,9 +77,9 @@ and **never** appears in the zone model.
 Left and right hands need distinct identity everywhere they appear side by
 side (live indicator, set summary, overlaid curves, progress charts):
 
-| Token | Value |
-|---|---|
-| `handLeft` | `#7C8CF8` |
+| Token       | Value     |
+| ----------- | --------- |
+| `handLeft`  | `#7C8CF8` |
 | `handRight` | `#F0913E` |
 
 Chosen to be distinguishable under the most common color-vision
@@ -118,16 +118,16 @@ do better than most webfonts at small sizes and steep angles.
 
 ### Scale
 
-| Role | Size / weight | Notes |
-|---|---|---|
-| `displayForce` | 88–104 pt, 600 | The live force number. Sized to fill available width; tabular. |
-| `displayTimer` | 48 pt, 600 | Rest countdown. Tabular. |
-| `metricLarge` | 32 pt, 600 | Set summary headline numbers. Tabular. |
-| `metricMedium` | 22 pt, 500 | Secondary metrics. Tabular. |
-| `title` | 20 pt, 600 | Screen titles. |
-| `body` | 16 pt, 400 | Default text. |
-| `label` | 13 pt, 500, +0.5 tracking, uppercase | Metric labels, units, axis ticks. |
-| `caption` | 12 pt, 400 | Hints, timestamps. |
+| Role           | Size / weight                        | Notes                                                          |
+| -------------- | ------------------------------------ | -------------------------------------------------------------- |
+| `displayForce` | 88–104 pt, 600                       | The live force number. Sized to fill available width; tabular. |
+| `displayTimer` | 48 pt, 600                           | Rest countdown. Tabular.                                       |
+| `metricLarge`  | 32 pt, 600                           | Set summary headline numbers. Tabular.                         |
+| `metricMedium` | 22 pt, 500                           | Secondary metrics. Tabular.                                    |
+| `title`        | 20 pt, 600                           | Screen titles.                                                 |
+| `body`         | 16 pt, 400                           | Default text.                                                  |
+| `label`        | 13 pt, 500, +0.5 tracking, uppercase | Metric labels, units, axis ticks.                              |
+| `caption`      | 12 pt, 400                           | Hints, timestamps.                                             |
 
 **Units are always typographically subordinate** to their value — `32.4` at
 `displayForce` with `kg` at `label` beside it, never the same size. The
@@ -177,17 +177,17 @@ color together as you cross the threshold, rather than tinting the whole
 screen. The chart is already where your eye rests during a set, and this
 keeps the signal attached to the data it describes.
 
-| Zone state | Band fill | Threshold line | Force trace |
-|---|---|---|---|
-| **Below** (clock stopped) | `zoneBelow` grey, ~10% opacity | `zoneBelow`, 2 pt | `textTertiary` grey, 3 pt |
-| **In band** (clock running) | `zoneIn` green, ~18% opacity | `zoneIn`, 2 pt | `zoneIn` green, 3.5 pt |
-| **Above band** (clock running) | `zoneAbove` teal, ~18% opacity | `zoneAbove`, 2 pt | `zoneAbove` teal, 3.5 pt |
+| Zone state                     | Band fill                      | Threshold line    | Force trace               |
+| ------------------------------ | ------------------------------ | ----------------- | ------------------------- |
+| **Below** (clock stopped)      | `zoneBelow` grey, ~10% opacity | `zoneBelow`, 2 pt | `textTertiary` grey, 3 pt |
+| **In band** (clock running)    | `zoneIn` green, ~18% opacity   | `zoneIn`, 2 pt    | `zoneIn` green, 3.5 pt    |
+| **Above band** (clock running) | `zoneAbove` teal, ~18% opacity | `zoneAbove`, 2 pt | `zoneAbove` teal, 3.5 pt  |
 
 So the whole plot **desaturates to grey the moment you drop below the
 threshold, and lights up green the moment you're working.** The trace
 thickening slightly when active is a second, non-color cue.
 
-Only the *live* portion of the trace recolors — the trailing history keeps
+Only the _live_ portion of the trace recolors — the trailing history keeps
 the color it had when it was recorded, so a glance at the curve shows where
 in the pull you were in or out of the zone. The curve becomes its own
 in-zone timeline.
@@ -228,8 +228,8 @@ in-zone timeline.
   frame. Interpolation would be a lie about measured data.
 - Zone color transitions (band fill, trace color) get a **120 ms ease** so
   the plot doesn't strobe on a value hovering at the threshold. This is the
-  one place smoothing is correct: it smooths the *presentation*, never the
-  data. The trace's *position* is never eased — only its color.
+  one place smoothing is correct: it smooths the _presentation_, never the
+  data. The trace's _position_ is never eased — only its color.
 - Screen transitions use platform defaults. No custom choreography.
 
 ## Iconography / branding

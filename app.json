@@ -1,0 +1,45 @@
+{
+  "expo": {
+    "name": "Pascal",
+    "slug": "pascal",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#0B0D0E",
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.pascal.app",
+      "infoPlist": {
+        "NSBluetoothAlwaysUsageDescription": "Pascal connects to your force-measuring device over Bluetooth to read live force data during tests and training sets.",
+        "UIBackgroundModes": ["bluetooth-central"]
+      }
+    },
+    "android": {
+      "package": "com.pascal.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#0B0D0E",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false,
+      "permissions": ["android.permission.BLUETOOTH_SCAN", "android.permission.BLUETOOTH_CONNECT"]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-sqlite",
+      [
+        "react-native-ble-plx",
+        {
+          "isBackgroundEnabled": true,
+          "modes": ["central"],
+          "bluetoothAlwaysPermission": "Pascal connects to your force-measuring device over Bluetooth to read live force data during tests and training sets."
+        }
+      ]
+    ]
+  }
+}

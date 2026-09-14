@@ -7,10 +7,11 @@ Pascal is a finger strength training app designed for climbers. It enables finge
 ## Goals
 
 What does v1 need to do to be considered a success:
+
 - Connect to the force device over BLE and stream live readings on a plot
 - Run a defined set of test/training protocols
 - Log and review historical session data
-- Analyze historic data and see the progression through time 
+- Analyze historic data and see the progression through time
 - Export data
 - Have testing protocols where we test max pull and similar and log them, so that further trainings can be based on a percentage of max pull
 

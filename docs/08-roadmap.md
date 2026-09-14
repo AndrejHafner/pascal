@@ -17,7 +17,7 @@ app, and it's all testable in CI.
 
 ### What the emulator cannot verify
 
-It replays sequences written *from* the byte layouts in
+It replays sequences written _from_ the byte layouts in
 [02](02-ble-protocol.md) — it never produces real device bytes. So it cannot
 confirm:
 
@@ -148,7 +148,7 @@ Everything around the live screen needed to run a complete workout.
 emulator — setup → max test both hands → training sets at a % of that max →
 summary → saved — and the stored data is correct on inspection.
 
-> Spec assumptions that need *physical* feel-testing — especially the
+> Spec assumptions that need _physical_ feel-testing — especially the
 > tolerance band width, still open in
 > [03](03-training-and-data-model.md) — can only be validated in
 > [Phase H](#phase-h--hardware-validation-deferred). Until then the defaults
@@ -190,8 +190,8 @@ available. Until it passes, the app is feature-complete but its recorded
 numbers are **unverified** — usable for exercising the app, not for making
 training decisions.
 
-Everything here checks the same thing from different angles: *does the
-documented protocol match the actual hardware?*
+Everything here checks the same thing from different angles: _does the
+documented protocol match the actual hardware?_
 
 ### Progressor
 
@@ -227,7 +227,7 @@ Progressor sustains 60 Hz, the WH-C06 advertisement rate and iOS behavior
 are documented, feel-testing findings are written back into the docs, and
 **v1.0.0 is tagged**.
 
-> If reality contradicts [02](02-ble-protocol.md), fix the parser *and* the
+> If reality contradicts [02](02-ble-protocol.md), fix the parser _and_ the
 > doc, and add a fixture test reproducing the real bytes — so the regression
 > can never return silently.
 
@@ -247,20 +247,20 @@ Listed so they stay out of v1 scope:
 
 ## Risk register
 
-Emulator-first trades *early* risk discovery for *uninterrupted* build
+Emulator-first trades _early_ risk discovery for _uninterrupted_ build
 progress. The tradeoff is explicit: the hardware risks below stay open
 longer than they would have otherwise, and are all retired together in
 Phase H.
 
-| Risk | Retired in | Mitigation |
-|---|---|---|
-| **Parser doesn't match real hardware** | H | Known-weight check; emulator cannot catch this |
-| iOS manufacturer data unreliable (WH-C06) | H | Progressor-only-on-iOS fallback is acceptable |
-| 60 Hz unachievable in practice | H | Observed rate surfaced in-app; adjust targets in docs |
-| Tolerance band feels wrong | H | Configurable; defaults are guesses until pulled against |
-| Skia performance at 60 fps | 4 | Chart bypasses React state by design ([07](07-architecture.md)) |
-| Metric math errors | 3 | Pure functions, heavily tested; emulator fully covers this |
-| Data loss / migration bugs | 1, 7 | Forward-only tested migrations; export as escape hatch |
+| Risk                                      | Retired in | Mitigation                                                      |
+| ----------------------------------------- | ---------- | --------------------------------------------------------------- |
+| **Parser doesn't match real hardware**    | H          | Known-weight check; emulator cannot catch this                  |
+| iOS manufacturer data unreliable (WH-C06) | H          | Progressor-only-on-iOS fallback is acceptable                   |
+| 60 Hz unachievable in practice            | H          | Observed rate surfaced in-app; adjust targets in docs           |
+| Tolerance band feels wrong                | H          | Configurable; defaults are guesses until pulled against         |
+| Skia performance at 60 fps                | 4          | Chart bypasses React state by design ([07](07-architecture.md)) |
+| Metric math errors                        | 3          | Pure functions, heavily tested; emulator fully covers this      |
+| Data loss / migration bugs                | 1, 7       | Forward-only tested migrations; export as escape hatch          |
 
 **The concentration of risk in Phase H is the known cost of this approach.**
 Worst realistic case: a parser is wrong, and the fix is confined to a pure

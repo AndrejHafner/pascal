@@ -40,11 +40,11 @@ also the model for Pascal's BLE emulator class.
 
 ### Tindeq Progressor
 
-| Role | UUID |
-|---|---|
-| Service | `7e4e1701-1ea6-40c9-9dcc-13d34ffead57` |
+| Role                                    | UUID                                   |
+| --------------------------------------- | -------------------------------------- |
+| Service                                 | `7e4e1701-1ea6-40c9-9dcc-13d34ffead57` |
 | Notify ("rx", data + command responses) | `7e4e1702-1ea6-40c9-9dcc-13d34ffead57` |
-| Write ("tx", commands) | `7e4e1703-1ea6-40c9-9dcc-13d34ffead57` |
+| Write ("tx", commands)                  | `7e4e1703-1ea6-40c9-9dcc-13d34ffead57` |
 
 Discovery: filter on advertised device **name prefix `"Progressor"`** (not a
 service-UUID scan filter, though the service UUID above should still be
@@ -93,13 +93,13 @@ Drop the packet if `value.byteLength < 2 + payloadLength`.
 
 `kind` values:
 
-| kind | Meaning |
-|---|---|
-| 0 | `RESPONSE_COMMAND` — response to a previously written command |
-| 1 | `RESPONSE_WEIGHT_MEASUREMENT` — streamed force data |
-| 2 | `RESPONSE_RFD_PEAK` — not needed for v1 |
-| 3 | `RESPONSE_RFD_PEAK_SERIES` — not needed for v1 |
-| 4 | `RESPONSE_LOW_POWER_WARNING` — log only |
+| kind | Meaning                                                       |
+| ---- | ------------------------------------------------------------- |
+| 0    | `RESPONSE_COMMAND` — response to a previously written command |
+| 1    | `RESPONSE_WEIGHT_MEASUREMENT` — streamed force data           |
+| 2    | `RESPONSE_RFD_PEAK` — not needed for v1                       |
+| 3    | `RESPONSE_RFD_PEAK_SERIES` — not needed for v1                |
+| 4    | `RESPONSE_LOW_POWER_WARNING` — log only                       |
 
 **`kind === 1` (weight measurement) — batched, 8 bytes per sample:**
 `payloadLength / 8` samples can arrive in a single notification.
@@ -117,13 +117,13 @@ corrupting any running peak/mean/min calculation.
 **`kind === 0` (command response)** — payload shape depends on which command
 was last written:
 
-| Last command | Response payload |
-|---|---|
-| `GET_BATTERY_VOLTAGE` | `uint32` LE, millivolts |
-| `GET_FIRMWARE_VERSION` / `GET_ERROR_INFORMATION` | UTF-8 text |
-| `GET_PROGRESSOR_ID` | 8 bytes, reversed then hex-encoded MSB-first |
-| `GET_CALIBRATION` | 12 bytes = 3× `float32` LE: `slope`, `intercept`, `trim`. `value = raw*slope + intercept + trim` |
-| `GET_CALIBRATION_TABLE` | sequence of 16-byte records (one per notification): `[u32 lowerRaw, u32 upperRaw, f32 slope, f32 intercept]` |
+| Last command                                     | Response payload                                                                                             |
+| ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------ |
+| `GET_BATTERY_VOLTAGE`                            | `uint32` LE, millivolts                                                                                      |
+| `GET_FIRMWARE_VERSION` / `GET_ERROR_INFORMATION` | UTF-8 text                                                                                                   |
+| `GET_PROGRESSOR_ID`                              | 8 bytes, reversed then hex-encoded MSB-first                                                                 |
+| `GET_CALIBRATION`                                | 12 bytes = 3× `float32` LE: `slope`, `intercept`, `trim`. `value = raw*slope + intercept + trim`             |
+| `GET_CALIBRATION_TABLE`                          | sequence of 16-byte records (one per notification): `[u32 lowerRaw, u32 upperRaw, f32 slope, f32 intercept]` |
 
 Calibration read/write and the RFD-peak commands are **not needed for
 Pascal v1** — the device ships pre-calibrated and Pascal only consumes
@@ -164,19 +164,19 @@ lower-fidelity device of the two; do not assume it can hit the 60 Hz target used
 
 Single-byte ASCII opcodes written to the "tx" characteristic:
 
-| Command | Char | Hex | Notes |
-|---|---|---|---|
-| `TARE_SCALE` | `d` | 0x64 | Hardware tare — device must be actively streaming when called |
-| `START_WEIGHT_MEAS` | `e` | 0x65 | Begin streaming |
-| `STOP_WEIGHT_MEAS` | `f` | 0x66 | Stop streaming |
-| `GET_FIRMWARE_VERSION` | `k` | 0x6b | |
-| `GET_ERROR_INFORMATION` | `l` | 0x6c | |
-| `CLR_ERROR_INFORMATION` | `m` | 0x6d | |
-| `SLEEP` | `n` | 0x6e | Shuts the device down |
-| `GET_BATTERY_VOLTAGE` | `o` | 0x6f | |
-| `GET_PROGRESSOR_ID` | `p` | 0x70 | |
-| `GET_CALIBRATION` | `r` | 0x72 | |
-| `REBOOT` | `u` | 0x75 | Send as `[0x75, 0, 1]` (needs confirmation byte); drops the BLE connection immediately by design |
+| Command                 | Char | Hex  | Notes                                                                                            |
+| ----------------------- | ---- | ---- | ------------------------------------------------------------------------------------------------ |
+| `TARE_SCALE`            | `d`  | 0x64 | Hardware tare — device must be actively streaming when called                                    |
+| `START_WEIGHT_MEAS`     | `e`  | 0x65 | Begin streaming                                                                                  |
+| `STOP_WEIGHT_MEAS`      | `f`  | 0x66 | Stop streaming                                                                                   |
+| `GET_FIRMWARE_VERSION`  | `k`  | 0x6b |                                                                                                  |
+| `GET_ERROR_INFORMATION` | `l`  | 0x6c |                                                                                                  |
+| `CLR_ERROR_INFORMATION` | `m`  | 0x6d |                                                                                                  |
+| `SLEEP`                 | `n`  | 0x6e | Shuts the device down                                                                            |
+| `GET_BATTERY_VOLTAGE`   | `o`  | 0x6f |                                                                                                  |
+| `GET_PROGRESSOR_ID`     | `p`  | 0x70 |                                                                                                  |
+| `GET_CALIBRATION`       | `r`  | 0x72 |                                                                                                  |
+| `REBOOT`                | `u`  | 0x75 | Send as `[0x75, 0, 1]` (needs confirmation byte); drops the BLE connection immediately by design |
 
 Commands used for v1: `START_WEIGHT_MEAS`, `STOP_WEIGHT_MEAS`, `TARE_SCALE`,
 `GET_BATTERY_VOLTAGE`. The rest (calibration, RFD, reboot, error log) are
@@ -231,7 +231,7 @@ connect-and-monitor. Practically:
 
 - BLE cannot be tested in a simulator/emulator at the OS/hardware level —
   iOS Simulator and Android Emulator do not support real Bluetooth hardware
-  access. All *device* protocol verification requires physical iOS and
+  access. All _device_ protocol verification requires physical iOS and
   Android hardware. See below for how Pascal mitigates this at the
   application level for day-to-day development.
 

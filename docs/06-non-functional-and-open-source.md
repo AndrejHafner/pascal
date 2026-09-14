@@ -28,16 +28,16 @@ and must not use their logos or imply endorsement.
 
 These are the numbers that define "working correctly," not aspirations:
 
-| Target | Value | Rationale |
-|---|---|---|
-| Sample ingest rate | ~60 Hz sustained (Progressor) | Project-wide constraint; WH-C06 will be lower and that's expected ([02](02-ble-protocol.md)) |
-| Dropped samples during a set | **0** under normal conditions | A gap corrupts TUT and impulse — the core metrics |
-| Live chart frame rate | 60 fps, no dropped frames during a set | The chart is the primary feedback channel |
-| Force readout latency | < 100 ms device-to-screen | Beyond this the feedback feels detached from the pull |
-| Zone transition → cue | < 50 ms after threshold crossing | The drop-below cue is the most time-critical signal in the app |
-| DB write cadence | batched every 100–200 ms | Never per-sample ([02](02-ble-protocol.md)) |
-| Cold start → usable | < 2 s | You open it mid-warm-up |
-| Reconnect after dropout | < 5 s | Should recover before the next set |
+| Target                       | Value                                  | Rationale                                                                                    |
+| ---------------------------- | -------------------------------------- | -------------------------------------------------------------------------------------------- |
+| Sample ingest rate           | ~60 Hz sustained (Progressor)          | Project-wide constraint; WH-C06 will be lower and that's expected ([02](02-ble-protocol.md)) |
+| Dropped samples during a set | **0** under normal conditions          | A gap corrupts TUT and impulse — the core metrics                                            |
+| Live chart frame rate        | 60 fps, no dropped frames during a set | The chart is the primary feedback channel                                                    |
+| Force readout latency        | < 100 ms device-to-screen              | Beyond this the feedback feels detached from the pull                                        |
+| Zone transition → cue        | < 50 ms after threshold crossing       | The drop-below cue is the most time-critical signal in the app                               |
+| DB write cadence             | batched every 100–200 ms               | Never per-sample ([02](02-ble-protocol.md))                                                  |
+| Cold start → usable          | < 2 s                                  | You open it mid-warm-up                                                                      |
+| Reconnect after dropout      | < 5 s                                  | Should recover before the next set                                                           |
 
 **The sample pipeline must not be starved by UI work.** Per the project-wide
 BLE constraint: buffer incoming samples in a ring buffer, drain on a timer.
@@ -57,7 +57,7 @@ almost everything else:
 
 - **Never fabricate samples.** No interpolation, smoothing, or gap-filling
   in stored data. Smoothing (the rolling average from
-  [03](03-training-and-data-model.md)) is a *derived metric*, computed from
+  [03](03-training-and-data-model.md)) is a _derived metric_, computed from
   raw samples that remain stored as measured.
 - **Never silently discard a set.** Aborted, disconnected, and partial sets
   are stored with a status, per [03](03-training-and-data-model.md).
@@ -143,7 +143,7 @@ both devices are non-negotiable.
 - **App store privacy declarations**, should a release ever happen, would be
   "no data collected" — and must remain true.
 - Bluetooth and (on Android) location permissions are required for BLE
-  scanning; the app must explain *why* in plain language at the point of
+  scanning; the app must explain _why_ in plain language at the point of
   request, since "this training app wants your location" is otherwise
   alarming and is a common reason people deny it.
 
