@@ -174,4 +174,36 @@ export class EffortRepository {
     )
     return rows.map(fromRow)
   }
+
+  /**
+   * Raw rows behind the Progress screen's "training load — TUT and impulse
+   * per week, per exercise" (docs/04). Week-bucketing is deliberately NOT
+   * done in SQL — SQLite's date functions assume Unix *seconds*, this
+   * codebase stores epoch *ms* throughout, and "start of week" is a
+   * convention (Mon vs Sun) better expressed and unit-tested as plain JS
+   * (see core/progress/trainingLoad.ts) than baked into a query string.
+   * completed-only, per docs/03's metrics being defined for completed
+   * efforts.
+   */
+  async listCompletedForTrainingLoad(
+    exerciseId: string,
+  ): Promise<{ startedAt: number; timeUnderTensionMs: number; impulseKgS: number }[]> {
+    const rows = await this.db.getAllAsync<{
+      started_at: number
+      time_under_tension_ms: number | null
+      impulse_kg_s: number | null
+    }>(
+      `SELECT ef.started_at, ef.time_under_tension_ms, ef.impulse_kg_s
+       FROM effort ef
+       JOIN training_set ts ON ts.id = ef.set_id
+       WHERE ts.exercise_id = ? AND ef.status = 'completed'
+       ORDER BY ef.started_at ASC;`,
+      exerciseId,
+    )
+    return rows.map((row) => ({
+      startedAt: row.started_at,
+      timeUnderTensionMs: row.time_under_tension_ms ?? 0,
+      impulseKgS: row.impulse_kg_s ?? 0,
+    }))
+  }
 }

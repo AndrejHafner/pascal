@@ -3,9 +3,10 @@ import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
 import { useRepositories } from '../../src/services/db/useRepositories'
-import type { Exercise } from '../../src/core/types'
+import type { Exercise, Hand } from '../../src/core/types'
 import type { SessionStep } from '../../src/core/session/sessionPlan'
 import { maxEffortDefault, targetBandDefault } from '../../src/core/protocol/presets'
+import { prescribeTargetForce } from '../../src/core/protocol/prescription'
 import { colors, spacing, typography } from '../../src/theme/tokens'
 
 /**
@@ -27,6 +28,14 @@ export default function SessionSetupScreen() {
   const [selectedExerciseId, setSelectedExerciseId] = useState<string | null>(null)
   const [steps, setSteps] = useState<SessionStep[]>([])
   const [bodyweightKg, setBodyweightKg] = useState('')
+  // Staleness of each target_band step's latest_max source — see docs/04
+  // "Stale max warning": "non-blocking retest suggestion." Keyed by step
+  // index rather than stored on SessionStep itself, since staleness is a
+  // point-in-time UI read, not part of the persisted plan shape. Recomputed
+  // whenever steps/selectedExerciseId change; session_step sources are
+  // never stale (resolveTargetBandSource treats them as always-fresh), so
+  // they're simply absent from this map.
+  const [staleWarnings, setStaleWarnings] = useState<Map<number, string>>(new Map())
 
   useEffect(() => {
     let cancelled = false
@@ -43,6 +52,34 @@ export default function SessionSetupScreen() {
       cancelled = true
     }
   }, [repos])
+
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      if (!repos) return
+      const next = new Map<number, string>()
+      for (const [index, step] of steps.entries()) {
+        if (step.kind !== 'target_band' || step.maxSource.kind !== 'latest_max') continue
+        const hands: Hand[] = ['left', 'right']
+        for (const hand of hands) {
+          const latest = await repos.maxRecords.getLatest(step.exerciseId, hand)
+          const result = prescribeTargetForce(
+            latest ? { forceKg: latest.forceKg, recordedAt: latest.recordedAt } : null,
+            step.targetPercent,
+          )
+          if (result.status === 'ok' && result.isStale) {
+            const staleDate = new Date(latest!.recordedAt).toLocaleDateString()
+            next.set(index, `Source max is from ${staleDate} — consider retesting.`)
+            break // one warning per step is enough, no need to check the other hand too
+          }
+        }
+      }
+      if (!cancelled) setStaleWarnings(next)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [repos, steps])
 
   function addMaxEffortStep() {
     if (!selectedExerciseId) return
@@ -170,6 +207,7 @@ export default function SessionSetupScreen() {
               step={step}
               index={i}
               exerciseName={exercises.find((e) => e.id === step.exerciseId)?.name ?? '?'}
+              staleWarning={staleWarnings.get(i) ?? null}
               onRemove={() => removeStep(i)}
             />
           ))
@@ -191,11 +229,13 @@ function StepCard({
   step,
   index,
   exerciseName,
+  staleWarning,
   onRemove,
 }: {
   step: SessionStep
   index: number
   exerciseName: string
+  staleWarning: string | null
   onRemove: () => void
 }) {
   return (
@@ -209,6 +249,7 @@ function StepCard({
         </TouchableOpacity>
       </View>
       <Text style={styles.stepCardDetail}>{exerciseName}</Text>
+      {staleWarning && <Text style={styles.staleWarningText}>{staleWarning}</Text>}
       {step.kind === 'max_effort' ? (
         <Text style={styles.stepCardDetail}>
           {step.attempts} attempts × {(step.pullDurationMs / 1000).toFixed(0)}s, both hands
@@ -273,6 +314,11 @@ const styles = StyleSheet.create({
   stepCardTitle: { ...typography.body, color: colors.textPrimary, fontWeight: '600' } as any,
   removeText: { ...typography.caption, color: colors.danger } as any,
   stepCardDetail: { ...typography.caption, color: colors.textSecondary, marginTop: 2 } as any,
+  staleWarningText: {
+    ...typography.caption,
+    color: colors.warning,
+    marginTop: spacing.xs,
+  } as any,
   startButton: {
     margin: spacing.lg,
     paddingVertical: spacing.md,

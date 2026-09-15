@@ -20,6 +20,21 @@ function fromRow(row: SessionRow): Session {
   }
 }
 
+/**
+ * One row per session for the History list — docs/04 "History: ...each row
+ * shows date, exercise(s), set count, headline number (max or total TUT)."
+ * Headline number is the session's single highest smoothed peak force
+ * across all completed efforts, when any exist; total TUT is always shown
+ * alongside it (not a fallback — see HistorySessionCard).
+ */
+export interface SessionSummaryRow {
+  session: Session
+  exerciseNames: string[]
+  setCount: number
+  headlinePeakForceKg: number | null
+  totalTutMs: number
+}
+
 export class SessionRepository {
   constructor(private readonly db: SQLiteDatabase) {}
 
@@ -71,5 +86,70 @@ export class SessionRepository {
       limit,
     )
     return rows.map(fromRow)
+  }
+
+  /**
+   * The History list's per-page query — see docs/04 "History". One row per
+   * session carrying set count, session-wide peak, and total TUT via
+   * correlated subqueries; exercise names are fetched in a second,
+   * per-session query rather than GROUP_CONCAT'd here, since SQLite's
+   * GROUP_CONCAT(DISTINCT ...) has no custom-separator form and exercise
+   * names are free text that may itself contain commas — splitting on ','
+   * would be silently wrong for a name like "20mm edge, half crimp".
+   * History pages are small (tens of sessions, not thousands), so the
+   * extra per-session query is a correctness trade worth making.
+   * Sessions with sets but zero *completed* efforts (all aborted) get
+   * headlinePeakForceKg: null rather than 0 — 0 kg is a real reading, not
+   * "no data."
+   */
+  async listWithSummary(limit = 50, offset = 0): Promise<SessionSummaryRow[]> {
+    const rows = await this.db.getAllAsync<{
+      id: string
+      started_at: number
+      ended_at: number | null
+      bodyweight_kg: number
+      notes: string | null
+      set_count: number
+      headline_peak_force_kg: number | null
+      total_tut_ms: number | null
+    }>(
+      `SELECT
+         s.id, s.started_at, s.ended_at, s.bodyweight_kg, s.notes,
+         (SELECT COUNT(*) FROM training_set ts3 WHERE ts3.session_id = s.id) AS set_count,
+         (
+           SELECT MAX(ef.peak_force_smoothed_kg)
+           FROM effort ef JOIN training_set ts4 ON ts4.id = ef.set_id
+           WHERE ts4.session_id = s.id AND ef.status = 'completed'
+         ) AS headline_peak_force_kg,
+         (
+           SELECT COALESCE(SUM(ef2.time_under_tension_ms), 0)
+           FROM effort ef2 JOIN training_set ts5 ON ts5.id = ef2.set_id
+           WHERE ts5.session_id = s.id AND ef2.status = 'completed'
+         ) AS total_tut_ms
+       FROM session s
+       ORDER BY s.started_at DESC
+       LIMIT ? OFFSET ?;`,
+      limit,
+      offset,
+    )
+
+    const summaries: SessionSummaryRow[] = []
+    for (const row of rows) {
+      const nameRows = await this.db.getAllAsync<{ name: string }>(
+        `SELECT DISTINCT e.name AS name
+         FROM training_set ts JOIN exercise e ON e.id = ts.exercise_id
+         WHERE ts.session_id = ?
+         ORDER BY e.name ASC;`,
+        row.id,
+      )
+      summaries.push({
+        session: fromRow(row),
+        exerciseNames: nameRows.map((n) => n.name),
+        setCount: row.set_count,
+        headlinePeakForceKg: row.headline_peak_force_kg,
+        totalTutMs: row.total_tut_ms ?? 0,
+      })
+    }
+    return summaries
   }
 }

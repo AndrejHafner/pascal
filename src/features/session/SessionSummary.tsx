@@ -1,9 +1,17 @@
 import { useEffect, useState } from 'react'
 import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native'
 import { computeAsymmetry } from '../../core/metrics/asymmetry'
+import { isNewPersonalBest } from '../../core/progress/personalBest'
 import type { Repositories } from '../../services/db/repositories'
-import type { Effort } from '../../core/types'
+import type { Effort, Hand } from '../../core/types'
 import { colors, spacing, typography } from '../../theme/tokens'
+
+interface ExercisePb {
+  exerciseId: string
+  exerciseName: string
+  hand: Hand
+  forceKg: number
+}
 
 /**
  * Session summary — see docs/04-screens-and-ux.md "Session summary":
@@ -21,18 +29,54 @@ export function SessionSummary({
   onSaved: () => void
 }) {
   const [efforts, setEfforts] = useState<Effort[] | null>(null)
+  const [newPbs, setNewPbs] = useState<ExercisePb[]>([])
   const [notes, setNotes] = useState('')
 
   useEffect(() => {
     let cancelled = false
     void (async () => {
+      const session = await repos.sessions.getById(sessionId)
       const sets = await repos.trainingSets.listBySession(sessionId)
       const allEfforts: Effort[] = []
+      // exerciseId -> hand -> {name, best completed peak this session}
+      const bestByExerciseHand = new Map<string, Map<Hand, { name: string; forceKg: number }>>()
+
       for (const set of sets) {
         const setEfforts = await repos.efforts.listBySet(set.id)
         allEfforts.push(...setEfforts)
+
+        const exercise = await repos.exercises.getById(set.exerciseId)
+        if (!exercise) continue
+        for (const effort of setEfforts) {
+          if (effort.status !== 'completed' || effort.peakForceSmoothedKg === null) continue
+          const byHand = bestByExerciseHand.get(set.exerciseId) ?? new Map()
+          const existing = byHand.get(effort.hand)
+          if (!existing || effort.peakForceSmoothedKg > existing.forceKg) {
+            byHand.set(effort.hand, { name: exercise.name, forceKg: effort.peakForceSmoothedKg })
+          }
+          bestByExerciseHand.set(set.exerciseId, byHand)
+        }
       }
-      if (!cancelled) setEfforts(allEfforts)
+
+      // A session's own max only counts as a PB against records from
+      // BEFORE this session — see docs/04 "whether it's a new PB."
+      // session.startedAt (not Date.now()) is the cutoff so re-opening a
+      // saved summary later doesn't retroactively un-PB it.
+      const cutoff = session?.startedAt ?? Date.now()
+      const pbs: ExercisePb[] = []
+      for (const [exerciseId, byHand] of bestByExerciseHand) {
+        for (const [hand, best] of byHand) {
+          const prior = await repos.maxRecords.getBestBefore(exerciseId, hand, cutoff)
+          if (isNewPersonalBest(best.forceKg, prior?.forceKg ?? null)) {
+            pbs.push({ exerciseId, exerciseName: best.name, hand, forceKg: best.forceKg })
+          }
+        }
+      }
+
+      if (!cancelled) {
+        setEfforts(allEfforts)
+        setNewPbs(pbs)
+      }
     })()
     return () => {
       cancelled = true
@@ -88,6 +132,16 @@ export function SessionSummary({
           <Text style={styles.maxLabel}>
             Right max: {rightMax != null ? `${rightMax.toFixed(1)} kg` : '—'}
           </Text>
+        </View>
+      )}
+
+      {newPbs.length > 0 && (
+        <View style={styles.pbBlock}>
+          {newPbs.map((pb) => (
+            <Text key={`${pb.exerciseId}-${pb.hand}`} style={styles.pbText}>
+              New PB — {pb.exerciseName} ({pb.hand}): {pb.forceKg.toFixed(1)} kg
+            </Text>
+          ))}
         </View>
       )}
 
@@ -149,6 +203,8 @@ const styles = StyleSheet.create({
   statLabel: { ...typography.caption, color: colors.textTertiary, marginTop: spacing.xs } as any,
   maxRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: spacing.sm },
   maxLabel: { ...typography.body, color: colors.textSecondary } as any,
+  pbBlock: { marginTop: spacing.sm, gap: spacing.xs },
+  pbText: { ...typography.caption, color: colors.accent } as any,
   asymmetryText: { ...typography.caption, color: colors.textTertiary } as any,
   abortedNote: { ...typography.caption, color: colors.warning } as any,
   label: {

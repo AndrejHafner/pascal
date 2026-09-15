@@ -350,6 +350,75 @@ Deliberately scoped out, not silently dropped:
 **Done when:** several emulated sessions render correctly across all views,
 and the numbers reconcile with the raw sample data.
 
+**Status: done.** History lists sessions grouped by month (date, exercise
+names, set count, headline number — session peak force if any effort
+completed, else total TUT), reverse-chronological with `LIMIT`/`OFFSET`
+paging. Session detail lists sets with both hands' status (aborted/
+disconnected efforts are labeled, not hidden). Set detail overlays both
+hands' force curves on the SAME `ForceChart` used live — a new
+`secondaryHistoricalSamples` prop draws the second hand as a plain
+fixed-color trace sharing the primary series' Y-scale (so a stronger
+second hand can't clip off-chart) and X-window (so both hands share
+identical axes even if one effort ran longer), styled per docs/05 as
+`handLeft` solid / `handRight` dashed — a `DashPathEffect` addition to
+`DrawSegment` that the live screen doesn't otherwise use.
+
+Progress is an exercise picker → per-exercise detail with four charts, all
+built on a new `TrendChart` component (`trendGeometry.ts`, unit-tested
+separately from `ForceChart`'s time-within-one-effort geometry, since a
+calendar-time-across-sessions axis is a genuinely different shape):
+max progression per hand with a kg ↔ %BW toggle (normalized against each
+`MaxRecord`'s own stored `bodyweightKgAtTest`, never today's weight — a
+past point must not silently reshape when the climber's weight changes),
+asymmetry trend (left/right `MaxRecord`s paired by nearest-in-time match
+within 24h, since the two hands' maxes are independent rows with no
+structural 1:1 link — see `pairForAsymmetryTrend`) with the 5% threshold
+drawn as a dashed reference line, and weekly TUT/impulse training load
+(bucketed in JS, not SQL, since SQLite's date functions assume Unix
+seconds while this schema stores epoch ms throughout). Sparse data (one or
+two points) renders as labeled dots per docs/05, never an empty or broken
+chart — `computeTrendScale`/`trendPointToXY` handle the single-point
+divide-by-zero case explicitly and are tested for it.
+
+PB tracking and the stale-max warning were both spec'd in earlier phases'
+docs/04 sections but never actually wired up — closed here rather than
+left as a silent gap. `SessionSummary`'s docstring claimed "whether it's a
+new PB" since Phase 5; the code never checked it. Now each exercise/hand
+touched in a session is compared via the new `maxRecords.getBestBefore()`
+query against every record from _before that session's start_ (not
+`Date.now()`, so reopening a saved summary later doesn't retroactively
+un-PB it), and a genuine PB gets a quiet one-line note — never an alert,
+per docs/04's "celebrated, but quietly." Session setup now runs
+`prescribeTargetForce` against the latest max whenever a "Target-band
+(latest max)" step is added and shows a non-blocking retest suggestion
+when it's stale (the existing 6-week default from `prescription.ts`,
+already correct, just never surfaced in this screen).
+
+284 → 341 tests this phase (57 new): repository query correctness
+(`listWithSummary`, `listByExerciseChronological`, `getBestBefore`,
+`listCompletedForTrainingLoad`) against real SQLite, including a
+deliberate exercise-name-containing-a-comma case that would have silently
+corrupted the History list had the exercise names been joined with
+`GROUP_CONCAT(DISTINCT ...)` and split on `,` — SQLite's `GROUP_CONCAT`
+has no custom-separator form for `DISTINCT`, so that path was replaced
+with one small per-session query instead of a fragile string-splitting
+trick. All new `core/progress/` modules (`trainingLoad`, `personalBest`,
+`normalization`, `asymmetryTrend`) are pure and unit-tested without a
+database.
+
+Deliberately scoped out, not silently dropped:
+
+- **Training load is TUT/impulse only** — docs/04 doesn't ask for a
+  separate volume or rep-count trend, so none was built.
+- **Asymmetry pairing is nearest-in-time, not session-linked** — `MaxRecord`
+  has no `sessionId` column, so pairing infers "same testing occasion" from
+  a 24h proximity window rather than a real foreign key. Correct for every
+  realistic emulator/real-world usage pattern (both hands tested minutes
+  apart in one session), but a same-day-different-session edge case could
+  theoretically mispair. Not worth a schema migration for Phase 6.
+- **CSV export of history/progress data** is Phase 7 (docs/08), not this
+  phase — Phase 6 is read/visualize only.
+
 ## Phase 7 — Export, resilience, release prep
 
 - CSV export (summary + samples), streamed, including smoothing window and

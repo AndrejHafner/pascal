@@ -70,4 +70,40 @@ export class MaxRecordRepository {
     )
     return rows.map(fromRow)
   }
+
+  /**
+   * Oldest-first, for the Progress screen's max-progression chart (docs/04
+   * "per exercise, per hand, over time") and asymmetry trend, both of which
+   * plot left-to-right chronologically rather than consume a "most recent
+   * N" list.
+   */
+  async listByExerciseChronological(exerciseId: string, hand: Hand): Promise<MaxRecord[]> {
+    const rows = await this.db.getAllAsync<MaxRecordRow>(
+      `SELECT * FROM max_record WHERE exercise_id = ? AND hand = ? ORDER BY recorded_at ASC;`,
+      exerciseId,
+      hand,
+    )
+    return rows.map(fromRow)
+  }
+
+  /**
+   * The single highest forceKg ever recorded for exercise + hand, strictly
+   * before `beforeRecordedAt` — used for "new PB" detection (docs/04
+   * "Session summary": "whether it's a new PB"). null means no prior
+   * record exists, i.e. this session's max IS the first-ever PB.
+   */
+  async getBestBefore(
+    exerciseId: string,
+    hand: Hand,
+    beforeRecordedAt: number,
+  ): Promise<MaxRecord | null> {
+    const row = await this.db.getFirstAsync<MaxRecordRow>(
+      `SELECT * FROM max_record WHERE exercise_id = ? AND hand = ? AND recorded_at < ?
+       ORDER BY force_kg DESC LIMIT 1;`,
+      exerciseId,
+      hand,
+      beforeRecordedAt,
+    )
+    return row ? fromRow(row) : null
+  }
 }
