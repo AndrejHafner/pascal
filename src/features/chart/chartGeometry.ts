@@ -57,6 +57,34 @@ export function offsetToX(
   return fraction * dimensions.width
 }
 
+/**
+ * Live mode only: the current sample is plotted at this fraction of the
+ * chart's width rather than pinned to the right edge — per docs/05's
+ * general "give the eye room" instinct, extended here: a trace stuck to
+ * x=width reads as if it's constantly falling off a cliff. Anything drawn
+ * is always real history (the empty space past the current point stays
+ * blank, never extrapolated) — this only changes where "now" sits
+ * horizontally, not what data exists.
+ */
+export const LIVE_NOW_X_FRACTION = 0.7
+
+/**
+ * Widens the trailing window so the requested `historyMs` of history still
+ * fits between the left edge and "now," while "now" itself lands at
+ * `nowFraction` of the width instead of the right edge — the rest of the
+ * width (from nowFraction to 1) stays blank margin. Returns the effective
+ * windowStartMs/windowMs to pass into offsetToX/buildTraceSegments.
+ */
+export function computeLiveWindow(
+  nowOffsetMs: number,
+  historyMs: number,
+  nowFraction: number = LIVE_NOW_X_FRACTION,
+): { windowStartMs: number; windowMs: number } {
+  const windowStartMs = nowOffsetMs - historyMs
+  const windowMs = nowFraction > 0 ? historyMs / nowFraction : historyMs
+  return { windowStartMs, windowMs }
+}
+
 export interface TraceSegment {
   zone: Zone
   points: { x: number; y: number }[]

@@ -77,7 +77,11 @@ describe('emulator -> ring buffer -> SQLite pipeline', () => {
 
     drain.start()
     await device.connect()
-    jest.advanceTimersByTime(10_000)
+    // EmulatorDevice loops a sequence by default (a canned clip must be able
+    // to outlast a live "working" phase) — advance only through one lap so
+    // this stays a "zero drops in one lap" assertion, not "it stops on its
+    // own", which is no longer true for a looping sequence.
+    jest.advanceTimersByTime(sequences['steady-pull'].points.at(-1)!.offsetMs)
     await drain.stop()
     await device.disconnect()
 
@@ -144,7 +148,7 @@ describe('emulator -> ring buffer -> SQLite pipeline', () => {
 
     drain.start()
     await device.connect()
-    jest.advanceTimersByTime(10_000)
+    jest.advanceTimersByTime(sequences['noisy-pull'].points.at(-1)!.offsetMs)
     await drain.stop()
     await device.disconnect()
 
@@ -204,7 +208,7 @@ describe('emulator -> ring buffer -> SQLite pipeline', () => {
 
     drain.start()
     await device.connect()
-    jest.advanceTimersByTime(60_000)
+    jest.advanceTimersByTime(sequences['slow-whc06'].points.at(-1)!.offsetMs)
     await drain.stop()
     await device.disconnect()
 

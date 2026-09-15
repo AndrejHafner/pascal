@@ -13,6 +13,7 @@ const RUNS_MS = 2500
 export const dropout: Sequence = {
   id: 'dropout',
   pacing: 'batched',
+  loop: false,
   points: generatePoints(RAMP_MS + RUNS_MS, 16, (t) => {
     if (t < RAMP_MS) return TARGET_KG * (t / RAMP_MS)
     return TARGET_KG

@@ -45,8 +45,8 @@ export class SampleDrain {
   }
 
   private async flush(): Promise<void> {
-    if (this.buffer.size() === 0) return
-    const { forceKg, offsetMs } = this.buffer.drain()
+    const { forceKg, offsetMs } = this.buffer.drainSince()
+    if (forceKg.length === 0) return
     const samples: Sample[] = forceKg.map((forceKgValue, i) => ({
       effortId: this.effortId,
       offsetMs: offsetMs[i],

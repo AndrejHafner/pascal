@@ -37,13 +37,14 @@ describe('EmulatorDevice', () => {
     expect(device.isConnected()).toBe(true)
   })
 
-  it('emits every point of a batched sequence with no drops', async () => {
+  it('emits every point of one lap of a batched sequence with no drops', async () => {
     const device = new EmulatorDevice('steady-pull')
     const samples: number[] = []
     device.onSample((s) => samples.push(s.forceKg))
 
     await device.connect()
-    jest.advanceTimersByTime(10_000)
+    const lastOffsetMs = sequences['steady-pull'].points.at(-1)!.offsetMs
+    jest.advanceTimersByTime(lastOffsetMs)
 
     expect(samples.length).toBe(sequences['steady-pull'].points.length)
   })
@@ -62,8 +63,52 @@ describe('EmulatorDevice', () => {
     jest.advanceTimersByTime(0)
     expect(samples.length).toBe(1)
 
-    jest.advanceTimersByTime(100_000)
+    const lastOffsetMs = sequences['slow-whc06'].points.at(-1)!.offsetMs
+    jest.advanceTimersByTime(lastOffsetMs)
     expect(samples.length).toBe(sequences['slow-whc06'].points.length)
+  })
+
+  it('loops a batched sequence by default instead of going silent once exhausted', async () => {
+    // A live device never just stops mid-workout — a canned clip standing
+    // in for one must keep feeding samples for however long a real "working"
+    // phase (or a second hand's phase) actually runs, even past the clip's
+    // own recorded length. This is the bug behind "duration is too short,
+    // no output for right hand": target-band's default workDurationMs
+    // (10s) outlasts steady-pull's ~5.4s clip, and the second hand's phase
+    // starts only after that.
+    const device = new EmulatorDevice('steady-pull')
+    const samples: number[] = []
+    device.onSample((s) => samples.push(s.forceKg))
+
+    await device.connect()
+    const lapMs = sequences['steady-pull'].points.at(-1)!.offsetMs
+    jest.advanceTimersByTime(lapMs * 2 + 200)
+
+    expect(samples.length).toBeGreaterThan(sequences['steady-pull'].points.length * 2)
+  })
+
+  it('a looping sequence never fires the disconnected status', async () => {
+    const device = new EmulatorDevice('noisy-pull')
+    const statuses: DeviceStatus[] = []
+    device.onStatus((s) => statuses.push(s))
+
+    await device.connect()
+    const lapMs = sequences['noisy-pull'].points.at(-1)!.offsetMs
+    jest.advanceTimersByTime(lapMs * 3)
+
+    expect(statuses.some((s) => s.state === 'disconnected')).toBe(false)
+  })
+
+  it('loops a single-pacing sequence by default instead of going silent once exhausted', async () => {
+    const device = new EmulatorDevice('slow-whc06')
+    const samples: number[] = []
+    device.onSample((s) => samples.push(s.forceKg))
+
+    await device.connect()
+    const lapMs = sequences['slow-whc06'].points.at(-1)!.offsetMs
+    jest.advanceTimersByTime(lapMs * 2 + 500)
+
+    expect(samples.length).toBeGreaterThan(sequences['slow-whc06'].points.length * 2)
   })
 
   it('the dropout sequence stops emitting and fires a disconnected status', async () => {

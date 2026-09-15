@@ -4,6 +4,7 @@ import {
   offsetToX,
   buildTraceSegments,
   windowedSamples,
+  computeLiveWindow,
 } from '../../src/features/chart/chartGeometry'
 import type { Band } from '../../src/core/metrics/band'
 import type { ChartDimensions } from '../../src/features/chart/chartGeometry'
@@ -74,6 +75,37 @@ describe('offsetToX', () => {
 
   it('maps the window midpoint to the horizontal midpoint', () => {
     expect(offsetToX(6000, 1000, 10_000, dims)).toBeCloseTo(150, 6)
+  })
+})
+
+describe('computeLiveWindow', () => {
+  it('puts "now" at nowFraction of the width instead of the right edge', () => {
+    const { windowStartMs, windowMs } = computeLiveWindow(10_000, 10_000, 0.7)
+    // "now" (10_000) should land at x = width * 0.7 given these windowStartMs/windowMs.
+    const nowX = ((10_000 - windowStartMs) / windowMs) * 300
+    expect(nowX).toBeCloseTo(300 * 0.7, 6)
+  })
+
+  it('still shows the full requested history depth to the left of "now"', () => {
+    const { windowStartMs } = computeLiveWindow(10_000, 10_000, 0.7)
+    expect(windowStartMs).toBe(0) // 10_000 - historyMs(10_000)
+  })
+
+  it('widens the pixel window so history fits before "now" fraction, not after', () => {
+    const { windowMs } = computeLiveWindow(10_000, 10_000, 0.7)
+    expect(windowMs).toBeCloseTo(10_000 / 0.7, 6) // wider than historyMs
+  })
+
+  it('defaults to LIVE_NOW_X_FRACTION when no fraction is passed', () => {
+    const withDefault = computeLiveWindow(10_000, 10_000)
+    const explicit = computeLiveWindow(10_000, 10_000, 0.7)
+    expect(withDefault).toEqual(explicit)
+  })
+
+  it('falls back to pinning "now" at the right edge when nowFraction is 1', () => {
+    const { windowStartMs, windowMs } = computeLiveWindow(10_000, 10_000, 1)
+    expect(windowStartMs).toBe(0)
+    expect(windowMs).toBe(10_000)
   })
 })
 

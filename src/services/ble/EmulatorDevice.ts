@@ -38,6 +38,8 @@ export class EmulatorDevice implements DeviceSource {
   private nextPointIndex = 0
   private startedAtMs = 0
   private tareOffsetKg = 0
+  /** How many full loops of a looping sequence have started, so tickBatched can detect a new lap. */
+  private lapsEmitted = 0
 
   private sampleListeners = new Set<(sample: RawSample) => void>()
   private statusListeners = new Set<(status: DeviceStatus) => void>()
@@ -51,6 +53,7 @@ export class EmulatorDevice implements DeviceSource {
     this.emitStatus({ state: 'connecting' })
     this.connected = true
     this.nextPointIndex = 0
+    this.lapsEmitted = 0
     this.startedAtMs = Date.now()
     this.emitStatus({ state: 'connected' })
     this.startEmitting()
@@ -105,20 +108,44 @@ export class EmulatorDevice implements DeviceSource {
   }
 
   private tickBatched(): void {
-    const elapsedMs = Date.now() - this.startedAtMs
+    const totalMs = this.sequenceDurationMs()
+    const rawElapsedMs = Date.now() - this.startedAtMs
+    const loop = this.sequence.loop ?? true
+    const elapsedMs = loop && totalMs > 0 ? rawElapsedMs % totalMs : rawElapsedMs
+    const lapsCompleted = loop && totalMs > 0 ? Math.floor(rawElapsedMs / totalMs) : 0
+
+    // A loop wrap wasn't yet reflected in nextPointIndex (still mid-array
+    // from the previous lap) — reset so the "elapsedMs since lap start"
+    // comparison below starts scanning from the first point again.
+    if (lapsCompleted > this.lapsEmitted) {
+      this.nextPointIndex = 0
+      this.lapsEmitted = lapsCompleted
+    }
+
     while (
       this.nextPointIndex < this.sequence.points.length &&
       this.sequence.points[this.nextPointIndex].offsetMs <= elapsedMs
     ) {
-      this.emitPoint(this.sequence.points[this.nextPointIndex])
+      const point = this.sequence.points[this.nextPointIndex]
+      this.emitPoint(point, this.lapsEmitted * totalMs + point.offsetMs)
       this.nextPointIndex++
     }
-    if (this.nextPointIndex >= this.sequence.points.length) {
+    if (!loop && this.nextPointIndex >= this.sequence.points.length) {
       this.onSequenceExhausted()
     }
   }
 
   private scheduleNextSinglePoint(): void {
+    const loop = this.sequence.loop ?? true
+    if (this.nextPointIndex >= this.sequence.points.length) {
+      if (!loop) {
+        this.onSequenceExhausted()
+        return
+      }
+      this.nextPointIndex = 0
+      this.lapsEmitted++
+    }
+
     const point = this.sequence.points[this.nextPointIndex]
     if (!point) {
       this.onSequenceExhausted()
@@ -127,18 +154,28 @@ export class EmulatorDevice implements DeviceSource {
     const prevOffsetMs =
       this.nextPointIndex > 0 ? this.sequence.points[this.nextPointIndex - 1].offsetMs : 0
     const delayMs = Math.max(0, point.offsetMs - prevOffsetMs)
+    // Keeps deviceTimestampMs monotonically increasing across a loop wrap —
+    // a real device's clock never resets, and (effort_id, offset_ms) is a
+    // unique DB constraint, so replaying raw in-clip offsets after lap 1
+    // would collide.
+    const cumulativeOffsetMs = this.lapsEmitted * this.sequenceDurationMs() + point.offsetMs
 
     this.timer = setTimeout(() => {
-      this.emitPoint(point)
+      this.emitPoint(point, cumulativeOffsetMs)
       this.nextPointIndex++
       this.scheduleNextSinglePoint()
     }, delayMs)
   }
 
-  private emitPoint(point: { forceKg: number; offsetMs: number }): void {
+  private sequenceDurationMs(): number {
+    const last = this.sequence.points[this.sequence.points.length - 1]
+    return last ? last.offsetMs : 0
+  }
+
+  private emitPoint(point: { forceKg: number }, offsetMs: number): void {
     const sample: RawSample = {
       forceKg: point.forceKg - this.tareOffsetKg,
-      deviceTimestampMs: point.offsetMs,
+      deviceTimestampMs: offsetMs,
     }
     for (const listener of this.sampleListeners) listener(sample)
   }

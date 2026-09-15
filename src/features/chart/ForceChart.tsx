@@ -11,6 +11,7 @@ import {
   forceToY,
   buildTraceSegments,
   windowedSamples,
+  computeLiveWindow,
 } from './chartGeometry'
 import type { ChartSample, ChartDimensions, YScale } from './chartGeometry'
 import { colors } from '../../theme/tokens'
@@ -33,6 +34,8 @@ interface DrawSegment {
   path: SkPath
   color: string
   strokeWidth: number
+  /** docs/05-design.md "Both hands overlaid": handLeft solid, handRight dashed. */
+  dashed?: boolean
 }
 
 interface DrawState {
@@ -61,6 +64,17 @@ export interface ForceChartProps {
   onLiveSample?: (forceKg: number, zone: Zone) => void
   /** Live mode only: true freezes the trace in place rather than advancing — see docs/04 "Disconnect handling". */
   frozen?: boolean
+  /**
+   * Historical mode only: a second hand's samples, overlaid on the same
+   * axes as historicalSamples — see docs/04 "Session detail": "tap a set
+   * to see both hands' force curves overlaid (left/right in distinct
+   * colors, with the band overlaid)." Drawn as one fixed-color line (no
+   * per-zone coloring, no second band) so the two traces stay visually
+   * distinct without doubling the chrome.
+   */
+  secondaryHistoricalSamples?: ChartSample[]
+  /** Line color for secondaryHistoricalSamples — typically the other hand's theme color. */
+  secondaryColor?: string
 }
 
 /**
@@ -81,6 +95,8 @@ export function ForceChart({
   band,
   onLiveSample,
   frozen = false,
+  secondaryHistoricalSamples,
+  secondaryColor,
 }: ForceChartProps) {
   const [dimensions, setDimensions] = useState<ChartDimensions>({ width: 0, height: 0 })
   const [drawState, setDrawState] = useState<DrawState>(EMPTY_DRAW_STATE)
@@ -149,8 +165,25 @@ export function ForceChart({
   // full duration is known upfront, so the scale starts fresh at 0 each time).
   const historicalDrawState = useMemo(() => {
     if (liveBuffer || !historicalSamples) return null
-    return computeDrawState(historicalSamples, band, dimensions, 0, false)
-  }, [liveBuffer, historicalSamples, band, dimensions])
+    // Fold the secondary hand's peak into the SAME latched scale so a
+    // stronger second hand can't get clipped off the top of the chart —
+    // both traces must share one set of axes to be a true overlay.
+    const combinedPeakKg = Math.max(
+      0,
+      ...historicalSamples.map((s) => s.forceKg),
+      ...(secondaryHistoricalSamples ?? []).map((s) => s.forceKg),
+    )
+    const primary = computeDrawState(historicalSamples, band, dimensions, 0, false, combinedPeakKg)
+    if (!secondaryHistoricalSamples || secondaryHistoricalSamples.length === 0) return primary
+
+    const secondarySegment = buildSingleColorSegment(
+      secondaryHistoricalSamples,
+      dimensions,
+      { minKg: 0, maxKg: primary.latchedMaxKg },
+      secondaryColor ?? colors.textSecondary,
+    )
+    return { ...primary, segments: [...primary.segments, secondarySegment] }
+  }, [liveBuffer, historicalSamples, secondaryHistoricalSamples, secondaryColor, band, dimensions])
 
   const active = liveBuffer ? drawState : (historicalDrawState ?? EMPTY_DRAW_STATE)
   const bandStyle = styleForZone(frozen ? 'below' : (active.currentZone ?? 'below'))
@@ -201,7 +234,9 @@ export function ForceChart({
             strokeWidth={segment.strokeWidth}
             strokeCap="round"
             strokeJoin="round"
-          />
+          >
+            {segment.dashed && <DashPathEffect intervals={[8, 6]} />}
+          </Path>
         ))}
 
         {frozen && dimensions.width > 0 && (
@@ -225,17 +260,27 @@ function computeDrawState(
   dimensions: ChartDimensions,
   previousLatchedMaxKg: number,
   isLive: boolean,
+  /** Historical two-hand overlay: fold in the OTHER hand's peak so the shared scale fits both. */
+  overridePeakKg?: number,
 ): DrawState {
   if (samples.length === 0 || dimensions.width === 0) {
     return { ...EMPTY_DRAW_STATE, latchedMaxKg: previousLatchedMaxKg }
   }
 
   const nowOffsetMs = samples[samples.length - 1].offsetMs
-  const windowMs = isLive ? TRAILING_WINDOW_MS : Math.max(1, nowOffsetMs)
-  const windowed = isLive ? windowedSamples(samples, nowOffsetMs, windowMs) : samples
-  const windowStartMs = isLive ? nowOffsetMs - windowMs : 0
+  // Live: keep TRAILING_WINDOW_MS of actual history, but plot it across a
+  // wider pixel window so "now" lands short of the right edge (see
+  // computeLiveWindow) instead of pinned to it. Historical: the full known
+  // duration maps edge to edge — there's no "now" to leave room past.
+  const windowed = isLive ? windowedSamples(samples, nowOffsetMs, TRAILING_WINDOW_MS) : samples
+  const { windowStartMs, windowMs } = isLive
+    ? computeLiveWindow(nowOffsetMs, TRAILING_WINDOW_MS)
+    : { windowStartMs: 0, windowMs: Math.max(1, nowOffsetMs) }
 
-  const peakSoFarKg = windowed.reduce((max, s) => Math.max(max, s.forceKg), 0)
+  const peakSoFarKg = Math.max(
+    windowed.reduce((max, s) => Math.max(max, s.forceKg), 0),
+    overridePeakKg ?? 0,
+  )
   const scale: YScale = computeLatchedYScale(peakSoFarKg, band, previousLatchedMaxKg)
 
   const currentZone = band ? classifyZone(windowed[windowed.length - 1].forceKg, band) : null
@@ -281,6 +326,31 @@ function pointsToSkPath(points: { x: number; y: number }[]): SkPath {
     path.lineTo(points[i].x, points[i].y)
   }
   return path
+}
+
+/**
+ * A plain single-color trace for the historical two-hand overlay's second
+ * series — no zone coloring, no band (the primary series already drew
+ * one). Maps its own offsetMs against x=0..dimensions.width the same way
+ * historical mode's primary series does (full duration, edge to edge) so
+ * both hands share identical axes even if one effort ran slightly longer.
+ */
+function buildSingleColorSegment(
+  samples: ChartSample[],
+  dimensions: ChartDimensions,
+  scale: YScale,
+  color: string,
+): DrawSegment {
+  const nowOffsetMs = samples[samples.length - 1].offsetMs
+  const windowMs = Math.max(1, nowOffsetMs)
+  const points = samples.map((s) => ({
+    x: (s.offsetMs / windowMs) * dimensions.width,
+    y: forceToY(s.forceKg, scale, dimensions),
+  }))
+  // docs/05-design.md "Both hands overlaid": handLeft solid, handRight
+  // dashed — this segment is always the SECOND (overlay) trace, so it's
+  // always the dashed one regardless of which hand it represents.
+  return { path: pointsToSkPath(points), color, strokeWidth: 3, dashed: true }
 }
 
 const styles = StyleSheet.create({
