@@ -95,3 +95,18 @@ CREATE INDEX idx_set_session     ON training_set(session_id, ordinal);
 CREATE INDEX idx_effort_set      ON effort(set_id);
 CREATE INDEX idx_session_started ON session(started_at DESC);
 CREATE INDEX idx_max_lookup      ON max_record(exercise_id, hand, recorded_at DESC);
+
+-- Added in migration 0002 (docs/08-roadmap.md Phase 5). The draft
+-- SessionPlan a user builds in Session setup, persisted before the live
+-- screen opens so "resume unfinished session" (docs/04) can restore
+-- progress through a multi-step plan, not just individual TrainingSets.
+-- steps_json shape lives in application code (src/core/session/sessionPlan.ts).
+CREATE TABLE session_plan (
+  id            TEXT PRIMARY KEY,
+  session_id    TEXT NOT NULL REFERENCES session(id) ON DELETE CASCADE,
+  steps_json    TEXT NOT NULL,
+  current_step  INTEGER NOT NULL DEFAULT 0,
+  created_at    INTEGER NOT NULL
+);
+
+CREATE UNIQUE INDEX idx_session_plan_session ON session_plan(session_id);

@@ -29,6 +29,7 @@ describe('migrator', () => {
         'sample',
         'schema_version',
         'session',
+        'session_plan',
         'training_set',
       ].sort(),
     )

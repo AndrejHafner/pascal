@@ -292,6 +292,52 @@ summary → saved — and the stored data is correct on inspection.
 > [Phase H](#phase-h--hardware-validation-deferred). Until then the defaults
 > are educated guesses.
 
+**Status: done.** Session setup builds a multi-step `SessionPlan` (add a
+max-effort test, then a target-band step that can prescribe off that exact
+step's just-recorded max or off the latest DB max), persisted to a new
+`session_plan` table (migration 0002) before the live screen even opens —
+which also gives "resume unfinished session" (docs/04) real teeth: the
+plan and progress through it survive an app kill, not just individual
+`TrainingSet` rows. Exercise CRUD (create + list; required edge depth
+enforced) exists at `/exercise`. Bodyweight is prompted at setup,
+pre-filled from the last session. Set summary shows left/right side by
+side during the between-set pause; Session summary shows totals, per-hand
+max, asymmetry, and a notes field before Save. 284 tests total (95 new
+this phase), including an end-to-end data-correctness test that runs the
+exact doc scenario — 3 max attempts, both hands → best-attempt selection →
+`MaxRecord` → a target-band step prescribed at 80% of that specific
+session's fresh max (not any stale DB value) → 3 training sets created
+with that target baked in → session saved — and asserts on what actually
+lands in the database.
+
+One real architectural correction, caught before any test ran: the first
+design had `useStepRunner` call `useSessionRunner` directly to run each
+set. That's broken — `useSessionRunner`'s machine state is created once via
+`useState`'s lazy initializer and does not reset when its config prop
+changes, so the same hook instance would carry `phase: 'done'` from
+attempt 1 straight into attempt 2 and never restart. Fixed by inverting
+the ownership: `useStepRunner` only sequences `TrainingSet` creation and
+exposes `activeSet` config; the caller (`app/session/live.tsx`) mounts a
+`LiveSetRunner` component **keyed by `trainingSetId`**, so React's own
+remount-on-key-change gives each set a genuinely fresh runner instance.
+The same note is recorded in both files' doc comments so it isn't
+rediscovered.
+
+Deliberately scoped out, not silently dropped:
+
+- **Repeaters** have a defined preset (`presets.ts`, docs/03) but aren't
+  wired into `SessionStep`/the live runner. Setup only builds max-effort
+  and target-band steps.
+- **One shared band drives both hands** in a target-band step — resolved
+  from the left hand's prescription. Docs/03 doesn't specify per-hand
+  target bands, so this isn't a gap against the spec, but it's a real
+  simplification: an asymmetric session-step max (e.g. left 38kg, right
+  41kg) prescribes one target off the left value for both hands' live
+  zone/TUT feedback, even though each hand's actual result is still
+  compared independently at summary time.
+- **Exercise edit/delete** don't exist yet — create and list only.
+- Session setup has no "warm-up" guidance flow (post-v1 per docs/08).
+
 ## Phase 6 — History & progress
 
 - History list, session detail, set detail with both hands overlaid

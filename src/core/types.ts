@@ -112,3 +112,18 @@ export interface RawSample {
   /** Device-native monotonic timestamp in ms, when available (Progressor). Not wall-clock. */
   deviceTimestampMs?: number
 }
+
+/**
+ * The persisted draft plan a session is running — see
+ * src/core/session/sessionPlan.ts for the shape of the steps themselves,
+ * and docs/08-roadmap.md Phase 5 for why this exists (resume-unfinished-
+ * session support, per docs/04).
+ */
+export interface SessionPlanRecord {
+  id: string
+  sessionId: string
+  /** Serialized SessionStep[] — opaque to the DB layer, see sessionPlan.ts. */
+  stepsJson: string
+  currentStep: number
+  createdAt: number
+}

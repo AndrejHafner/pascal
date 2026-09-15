@@ -47,6 +47,11 @@ export class SessionRepository {
     await this.db.runAsync(`UPDATE session SET ended_at = ? WHERE id = ?;`, endedAt, id)
   }
 
+  /** Overall session notes — see docs/04 "Session summary": "Notes + tags, then Save." */
+  async updateNotes(id: string, notes: string | null): Promise<void> {
+    await this.db.runAsync(`UPDATE session SET notes = ? WHERE id = ?;`, notes, id)
+  }
+
   async getById(id: string): Promise<Session | null> {
     const row = await this.db.getFirstAsync<SessionRow>(`SELECT * FROM session WHERE id = ?;`, id)
     return row ? fromRow(row) : null
