@@ -370,8 +370,20 @@ size is stored alongside the result, always.
 One Skia `ForceChart` component, used live and historically
 ([04](04-screens-and-ux.md), [05](05-design.md)).
 
-- Live: reads the ring buffer on a `useFrameCallback` loop; trailing ~10 s
-  window; **never re-renders via React state**.
+- Live: reads the ring buffer on a `requestAnimationFrame` loop; trailing
+  ~10 s window; commits to React state at a throttled ~30fps rather than
+  every frame.
+  **Implementation note (Phase 4):** originally specified as reading the
+  buffer via Skia's `useFrameCallback` and never touching React state at
+  all, but the installed Skia version (2.6.2) has no such hook — that API
+  belonged to an older Skia release. This version's live-animation model
+  expects either plain React state driving its JSX props (Skia's own
+  lightweight reconciler, not React DOM, performs the actual native draw
+  from those props) or a Reanimated shared-value integration this project
+  doesn't otherwise need. The throttled-state approach satisfies the
+  original performance intent — don't block the UI thread with 60Hz
+  updates — through the mechanism this Skia version actually supports; see
+  [08-roadmap.md](08-roadmap.md) Phase 4 for the full account.
 - Historical: same component, fed a static sample array, full duration.
 - **Zone coloring is per-segment** — the trace is drawn as segments colored
   by the zone state at the time each was recorded, so history keeps its

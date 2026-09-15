@@ -219,6 +219,60 @@ UI without touching the phone between sets; the `dropout` sequence produces
 a visible frozen chart and paused clock (never a flatline to zero); the
 chart holds 60 fps; and cue-to-threshold latency is under 50 ms.
 
+**Status: built, unverified on-device.** `ForceChart`, the cue service, the
+session-runner effect layer, and `app/session/live.tsx` are all in place
+and exercised by 259 passing tests (up from 189 after Phase 3), including a
+hook-level integration test driving `useSessionRunner` through countdown →
+armed → working → interrupted → resumed with real assertions on persisted
+effort status. `expo-keep-awake` is wired in; the disconnect overlay offers
+resume/discard per docs/04. The 60fps and <50ms latency criteria are
+**not measured** — they require a running device and are exactly what
+[Phase H](#phase-h--hardware-validation-deferred) exists to check;
+recorded here as unverified rather than assumed passing.
+
+One deliberate divergence from doc 07's original design, discovered while
+implementing: the installed Skia version (2.6.2) has no `useFrameCallback`
+— that hook belonged to an older Skia API and this version's live-animation
+model expects either React state driving its JSX props (its own
+lightweight reconciler does the native draw, not React DOM) or a
+Reanimated shared-value integration this project doesn't otherwise need.
+`ForceChart` uses `requestAnimationFrame` reading the ring buffer directly,
+committed to React state at a throttled ~30fps rather than every frame —
+satisfying docs/07's actual performance intent (don't block the UI thread
+on 60Hz updates) through a different mechanism than the hook name it
+originally specified.
+
+Cue audio is a known, deliberate gap: `expo-audio` needs real audio file
+assets (`require('./tone.mp3')`), not runtime-synthesized tones, and Pascal
+has none yet. `CuePlayer` is fully wired for audio (`playTone` is a no-op
+pending real assets) with haptics completely real today — satisfying
+docs/04's "haptic-only must be a fully functional mode" as an actual
+requirement, not a fallback. Real tone assets are a follow-up, not blocking
+any roadmap phase.
+
+Two real bugs the tests caught, both would have corrupted real data:
+
+1. **`useSessionRunner` stamped every sample's `offsetMs` from
+   `Date.now()`**, which only has millisecond resolution — a Progressor
+   notification batches several samples at once (per docs/02), so multiple
+   samples landing in the same JS tick collided on the `sample` table's
+   `(effort_id, offset_ms)` primary key and threw. Fixed: prefer the
+   device's own `deviceTimestampMs` when present, else a monotonic
+   per-effort counter — never a raw wall-clock read for ordering.
+2. A hook test combining `useSessionRunner`'s real `setInterval`-driven
+   TICK with `@testing-library/react-native`'s real-timer `waitFor` polling
+   hung indefinitely (two independent real-time sources racing, never both
+   settling). Fixed by switching the test to fake timers with explicit
+   `jest.advanceTimersByTime` — a reminder that a hook wrapping a real
+   timer needs its tests to control time deterministically, not just await
+   real elapsed time and hope.
+
+Also required a testing-library version pin: `@testing-library/react-native@14.x`
+expects a `createRoot` API that `react-test-renderer@19.2.3` (the version
+this Expo SDK bundles) doesn't export — pinned to `13.3.3`, which targets
+the classic `create()` API and works correctly with this React/RN version
+pairing.
+
 ## Phase 5 — Full session flow
 
 Everything around the live screen needed to run a complete workout.

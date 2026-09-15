@@ -55,4 +55,33 @@ export class RingBuffer {
     this.count = 0
     this.writeIndex = 0
   }
+
+  /**
+   * Non-destructive read of the most recent `maxSamples` (or all buffered,
+   * if fewer), oldest first, WITHOUT clearing the buffer. For the chart's
+   * per-frame read — see docs/07-architecture.md "Charts": "Live: reads
+   * the ring buffer on a [per-frame] loop... never re-renders via React
+   * state." Writing into these output arrays (rather than allocating new
+   * ones) lets a caller reuse fixed-size buffers across frames to avoid
+   * per-frame GC pressure, matching the same no-allocation-on-the-hot-path
+   * principle push() follows.
+   */
+  peekLatest(
+    maxSamples: number,
+    outForceKg?: Float32Array,
+    outOffsetMs?: Uint32Array,
+  ): { forceKg: Float32Array; offsetMs: Uint32Array; length: number } {
+    const n = Math.min(this.count, maxSamples, outForceKg?.length ?? Infinity)
+    const forceKgOut = outForceKg ?? new Float32Array(maxSamples)
+    const offsetMsOut = outOffsetMs ?? new Uint32Array(maxSamples)
+
+    const startIndex = (this.writeIndex - n + this.capacity) % this.capacity
+    for (let i = 0; i < n; i++) {
+      const idx = (startIndex + i) % this.capacity
+      forceKgOut[i] = this.forceKg[idx]
+      offsetMsOut[i] = this.offsetMs[idx]
+    }
+
+    return { forceKg: forceKgOut, offsetMs: offsetMsOut, length: n }
+  }
 }

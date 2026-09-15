@@ -39,7 +39,8 @@
           "modes": ["central"],
           "bluetoothAlwaysPermission": "Pascal connects to your force-measuring device over Bluetooth to read live force data during tests and training sets."
         }
-      ]
+      ],
+      "expo-audio"
     ]
   }
 }

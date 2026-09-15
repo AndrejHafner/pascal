@@ -6,11 +6,10 @@
 // literature backing — it's a Pascal design decision.
 
 import type { Sample } from './rollingPeak'
+import type { Band } from './band'
+import { classifyZone, type Zone } from './zone'
 
-export interface Band {
-  targetKg: number
-  toleranceKg: number
-}
+export type { Band } from './band'
 
 export interface TutResult {
   /** in-band + above-band. The prescriptive number. */
@@ -23,15 +22,7 @@ export interface TutResult {
   timeToTargetMs: number | null
 }
 
-type Zone = 'below' | 'in' | 'above'
-
-function zoneOf(forceKg: number, band: Band): Zone {
-  const lower = band.targetKg - band.toleranceKg
-  const upper = band.targetKg + band.toleranceKg
-  if (forceKg < lower) return 'below'
-  if (forceKg > upper) return 'above'
-  return 'in'
-}
+const zoneOf: (forceKg: number, band: Band) => Zone = classifyZone
 
 /**
  * Buckets time between consecutive samples by which zone the *leading*
