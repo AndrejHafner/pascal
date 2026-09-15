@@ -1,7 +1,12 @@
 import type { Migration } from '../migrator'
 import { migration0001Initial } from './0001_initial'
 import { migration0002SessionPlan } from './0002_session_plan'
+import { migration0003AppSetting } from './0003_app_setting'
 
 // Registry, in order. Append new migrations here — never edit or remove one
 // that has shipped. See docs/06-non-functional-and-open-source.md.
-export const migrations: Migration[] = [migration0001Initial, migration0002SessionPlan]
+export const migrations: Migration[] = [
+  migration0001Initial,
+  migration0002SessionPlan,
+  migration0003AppSetting,
+]

@@ -3,6 +3,7 @@ import { useSessionRunner } from '../../src/features/session/useSessionRunner'
 import type { SetPlan } from '../../src/core/protocol/machine'
 import { FakeDeviceSource } from './testUtils/fakeDeviceSource'
 import { makeFakeCuePlayer } from './testUtils/fakeCuePlayer'
+import { FakeAppStateSource } from './testUtils/fakeAppStateSource'
 import { createTestDatabase } from '../testUtils/sqliteTestDb'
 import { runMigrations } from '../../src/services/db/migrator'
 import { migrations } from '../../src/services/db/migrations'
@@ -173,6 +174,94 @@ describe('useSessionRunner', () => {
 
     const efforts = await repos.efforts.listBySet(set.id)
     expect(efforts[0].status).toBe('disconnected')
+  })
+
+  it('backgrounding the app while working interrupts the set and marks the effort aborted', async () => {
+    const { repos, set, device, cues } = await setup()
+    const band: Band = { targetKg: 25, toleranceKg: 5 }
+    const appStateSource = new FakeAppStateSource()
+
+    const { result } = renderHook(() =>
+      useSessionRunner(
+        { plan, band, setId: set.id, deviceType: 'emulator', deviceSequence: 'steady-pull' },
+        {
+          device,
+          cues,
+          effortRepository: repos.efforts,
+          sampleRepository: repos.samples,
+          appStateSource,
+        },
+      ),
+    )
+
+    act(() => result.current.start())
+    await advanceOneTick()
+    act(() => device.emitSample(10))
+    await flushMicrotasks()
+    expect(result.current.state.phase).toBe('working')
+
+    act(() => appStateSource.emit('background'))
+    await flushMicrotasks()
+
+    expect(result.current.state.phase).toBe('interrupted')
+    const efforts = await repos.efforts.listBySet(set.id)
+    expect(efforts[0].status).toBe('aborted')
+  })
+
+  it('does not interrupt while idle — backgrounding before a set even starts is a no-op', async () => {
+    const { repos, set, device, cues } = await setup()
+    const band: Band = { targetKg: 25, toleranceKg: 5 }
+    const appStateSource = new FakeAppStateSource()
+
+    const { result } = renderHook(() =>
+      useSessionRunner(
+        { plan, band, setId: set.id, deviceType: 'emulator', deviceSequence: 'steady-pull' },
+        {
+          device,
+          cues,
+          effortRepository: repos.efforts,
+          sampleRepository: repos.samples,
+          appStateSource,
+        },
+      ),
+    )
+
+    act(() => appStateSource.emit('background'))
+    await flushMicrotasks()
+
+    expect(result.current.state.phase).toBe('idle')
+  })
+
+  it('returning to the foreground does not auto-resume — matches "never silently resume" (docs/04)', async () => {
+    const { repos, set, device, cues } = await setup()
+    const band: Band = { targetKg: 25, toleranceKg: 5 }
+    const appStateSource = new FakeAppStateSource()
+
+    const { result } = renderHook(() =>
+      useSessionRunner(
+        { plan, band, setId: set.id, deviceType: 'emulator', deviceSequence: 'steady-pull' },
+        {
+          device,
+          cues,
+          effortRepository: repos.efforts,
+          sampleRepository: repos.samples,
+          appStateSource,
+        },
+      ),
+    )
+
+    act(() => result.current.start())
+    await advanceOneTick()
+    act(() => device.emitSample(10))
+    await flushMicrotasks()
+
+    act(() => appStateSource.emit('background'))
+    await flushMicrotasks()
+    expect(result.current.state.phase).toBe('interrupted')
+
+    act(() => appStateSource.emit('active'))
+    await flushMicrotasks()
+    expect(result.current.state.phase).toBe('interrupted') // still requires an explicit resume/redo choice
   })
 
   it('resumeAfterReconnect returns to armed, never directly to working (per docs/04)', async () => {

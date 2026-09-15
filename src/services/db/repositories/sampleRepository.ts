@@ -44,6 +44,22 @@ export class SampleRepository {
     }))
   }
 
+  /**
+   * Every sample across every effort, streamed via getEachAsync rather
+   * than loaded as one array — see docs/07-architecture.md "Export": "a
+   * year of sessions is millions of rows." Ordered by effort_id then
+   * offset_ms so each effort's samples stay contiguous in the output file
+   * without needing a second pass or an in-memory group-by.
+   */
+  async *listAllForExport(): AsyncIterable<Sample> {
+    const rows = this.db.getEachAsync<{ effort_id: string; offset_ms: number; force_kg: number }>(
+      `SELECT effort_id, offset_ms, force_kg FROM sample ORDER BY effort_id ASC, offset_ms ASC;`,
+    )
+    for await (const row of rows) {
+      yield { effortId: row.effort_id, offsetMs: row.offset_ms, forceKg: row.force_kg }
+    }
+  }
+
   async countByEffort(effortId: string): Promise<number> {
     const row = await this.db.getFirstAsync<{ n: number }>(
       `SELECT COUNT(*) as n FROM sample WHERE effort_id = ?;`,

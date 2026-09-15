@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { AppState } from 'react-native'
 import { reduce, createInitialState } from '../../core/protocol/machine'
 import type {
   SessionState,
@@ -35,11 +36,21 @@ export interface SessionRunnerConfig {
   deviceSequence?: string
 }
 
+/** The narrow slice of React Native's AppState this hook actually uses — injectable so tests don't need a real NativeEventEmitter. */
+export interface AppStateSource {
+  addEventListener(
+    type: 'change',
+    listener: (state: 'active' | 'background' | 'inactive' | 'unknown' | 'extension') => void,
+  ): { remove(): void }
+}
+
 export interface SessionRunnerDeps {
   device: DeviceSource
   cues: CuePlayer
   effortRepository: EffortRepository
   sampleRepository: SampleRepository
+  /** Defaults to React Native's real AppState — override in tests with a fake. */
+  appStateSource?: AppStateSource
 }
 
 export interface SessionRunnerHandle {
@@ -261,6 +272,25 @@ export function useSessionRunner(
       unsubscribeStatus()
     }
   }, [deps.device, deps.cues, config.band, dispatch, liveBuffer])
+
+  // App backgrounded mid-set — see docs/04 "Visual states / edge cases":
+  // "treat as an interruption: pause, mark the set, offer resume on
+  // return. Don't pretend the data is continuous." The reducer's
+  // BACKGROUNDED handling (machine.ts) already does exactly this; this
+  // effect is the missing wire from the OS's actual lifecycle signal to
+  // that existing logic. Only the background transition dispatches —
+  // returning to foreground does NOT auto-resume (matches DEVICE_RESTORED's
+  // "never silently resume": the interrupted screen's explicit
+  // resume/redo choice is what continues the set, not merely reappearing).
+  useEffect(() => {
+    const source = deps.appStateSource ?? AppState
+    const subscription = source.addEventListener('change', (nextState) => {
+      if (nextState === 'background' || nextState === 'inactive') {
+        dispatch({ type: 'BACKGROUNDED' })
+      }
+    })
+    return () => subscription.remove()
+  }, [dispatch, deps.appStateSource])
 
   // Drive TICK on a real timer, plus the countdown tick/go cue — "three
   // short ticks, then one longer higher tone" (docs/04) — fired once per

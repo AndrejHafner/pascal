@@ -3,7 +3,7 @@ import type { SQLiteDatabase } from 'expo-sqlite'
 import { migrations } from './migrations'
 import { runMigrations } from './migrator'
 
-const DB_NAME = 'pascal.db'
+export const DB_NAME = 'pascal.db'
 
 let dbPromise: Promise<SQLiteDatabase> | null = null
 

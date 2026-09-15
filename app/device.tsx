@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
+import { Linking, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { BleManager } from 'react-native-ble-plx'
 import { createDeviceSource, type DeviceSourceSpec } from '../src/services/ble/createDeviceSource'
@@ -8,6 +8,17 @@ import { usePermissionState } from '../src/services/ble/usePermissionState'
 import type { DeviceSource, DeviceStatus } from '../src/services/ble/DeviceSource'
 import { sequences } from '../src/services/ble/sequences'
 import { colors, spacing, typography } from '../src/theme/tokens'
+
+/**
+ * Tindeq Progressor's low-battery cutoff isn't documented (docs/02 has no
+ * voltage thresholds) — 3400mV is a conservative single-cell Li-ion
+ * "getting low" line (full ~4200mV), chosen to warn with real time left
+ * to charge before a session, not right as the device dies mid-set.
+ * Revisit once Phase H's real-hardware battery behavior is observed.
+ */
+const LOW_BATTERY_MV = 3400
+
+type ScanState = 'idle' | 'scanning' | 'nothing_found'
 
 /**
  * Device screen — scan, connect, live readout, tare, battery, observed
@@ -31,15 +42,17 @@ export default function DeviceScreen() {
   const deviceRef = useRef<DeviceSource | null>(null)
   const [status, setStatus] = useState<DeviceStatus>({ state: 'disconnected' })
   const [forceKg, setForceKg] = useState(0)
+  const [sawNegativeForce, setSawNegativeForce] = useState(false)
   const [sampleCount, setSampleCount] = useState(0)
   const [battery, setBattery] = useState<number | null>(null)
   const firstSampleAt = useRef<number | null>(null)
   const [observedHz, setObservedHz] = useState<number | null>(null)
 
-  const [scanning, setScanning] = useState(false)
+  const [scanState, setScanState] = useState<ScanState>('idle')
   const [progressorCandidates, setProgressorCandidates] = useState<{ id: string; name: string }[]>(
     [],
   )
+  const candidateCountRef = useRef(0)
 
   useEffect(() => {
     return () => {
@@ -50,31 +63,38 @@ export default function DeviceScreen() {
 
   function scanForProgressor() {
     setProgressorCandidates([])
-    setScanning(true)
+    candidateCountRef.current = 0
+    setScanState('scanning')
     manager.startDeviceScan(null, null, (error, scannedDevice) => {
       if (error) {
-        setScanning(false)
+        setScanState('idle')
         return
       }
       if (!scannedDevice || !ProgressorDevice.nameMatches(scannedDevice.name)) return
-      setProgressorCandidates((prev) =>
-        prev.some((d) => d.id === scannedDevice.id)
-          ? prev
-          : [...prev, { id: scannedDevice.id, name: scannedDevice.name ?? 'Progressor' }],
-      )
+      setProgressorCandidates((prev) => {
+        if (prev.some((d) => d.id === scannedDevice.id)) return prev
+        const next = [...prev, { id: scannedDevice.id, name: scannedDevice.name ?? 'Progressor' }]
+        candidateCountRef.current = next.length
+        return next
+      })
     })
     setTimeout(() => {
       manager.stopDeviceScan()
-      setScanning(false)
+      // "still scanning" vs "nothing found" per docs/04 — only the
+      // zero-candidates case gets the dedicated nothing_found copy; if
+      // something was found, the pill list already communicates that, so
+      // the scan state just goes back to idle (re-scannable).
+      setScanState(candidateCountRef.current === 0 ? 'nothing_found' : 'idle')
     }, 10_000)
   }
 
   async function connectTo(spec: DeviceSourceSpec) {
     manager.stopDeviceScan()
-    setScanning(false)
+    setScanState('idle')
     await deviceRef.current?.disconnect()
     setSampleCount(0)
     setForceKg(0)
+    setSawNegativeForce(false)
     setBattery(null)
     setObservedHz(null)
     firstSampleAt.current = null
@@ -84,7 +104,12 @@ export default function DeviceScreen() {
 
     device.onStatus(setStatus)
     device.onSample((sample) => {
+      // docs/04 "Force reads negative": possible on Progressor (sign flips
+      // with direction). Clamp what's DISPLAYED, not the underlying
+      // reading itself — this is a display-only guard, so tare/logic
+      // elsewhere still sees the real signed value.
       setForceKg(sample.forceKg)
+      if (sample.forceKg < 0) setSawNegativeForce(true)
       setSampleCount((n) => {
         const next = n + 1
         const now = Date.now()
@@ -107,6 +132,7 @@ export default function DeviceScreen() {
 
   async function handleTare() {
     await deviceRef.current?.tare()
+    setSawNegativeForce(false)
   }
 
   if (permissionState.status !== 'ready') {
@@ -120,6 +146,11 @@ export default function DeviceScreen() {
               <Text style={styles.buttonText}>Grant permission</Text>
             </TouchableOpacity>
           )}
+          {'deepLinkToSettings' in permissionState && (
+            <TouchableOpacity style={styles.button} onPress={() => Linking.openSettings()}>
+              <Text style={styles.buttonText}>Open Settings</Text>
+            </TouchableOpacity>
+          )}
         </View>
       </SafeAreaView>
     )
@@ -131,8 +162,13 @@ export default function DeviceScreen() {
         <Text style={styles.title}>Device</Text>
 
         <View style={styles.readoutBlock}>
-          <Text style={styles.force}>{forceKg.toFixed(1)}</Text>
+          {/* Display-only clamp per docs/04 "Force reads negative" — the
+              underlying sample and tare() still see the real signed value. */}
+          <Text style={styles.force}>{Math.max(0, forceKg).toFixed(1)}</Text>
           <Text style={styles.unit}>kg</Text>
+          {sawNegativeForce && (
+            <Text style={styles.negativeForceHint}>Reading negative — try Tare below</Text>
+          )}
         </View>
 
         <View style={styles.statsRow}>
@@ -143,7 +179,15 @@ export default function DeviceScreen() {
           <Text style={styles.stat}>
             observed rate: {observedHz ? `${observedHz.toFixed(1)} Hz` : '—'}
           </Text>
-          <Text style={styles.stat}>battery: {battery !== null ? `${battery} mV` : '—'}</Text>
+          <Text
+            style={[
+              styles.stat,
+              battery !== null && battery < LOW_BATTERY_MV && styles.statWarning,
+            ]}
+          >
+            battery: {battery !== null ? `${battery} mV` : '—'}
+            {battery !== null && battery < LOW_BATTERY_MV ? ' (low)' : ''}
+          </Text>
         </View>
 
         <TouchableOpacity
@@ -155,9 +199,19 @@ export default function DeviceScreen() {
         </TouchableOpacity>
 
         <Text style={styles.label}>Tindeq Progressor</Text>
-        <TouchableOpacity style={styles.button} onPress={scanForProgressor} disabled={scanning}>
-          <Text style={styles.buttonText}>{scanning ? 'Scanning…' : 'Scan'}</Text>
+        <TouchableOpacity
+          style={styles.button}
+          onPress={scanForProgressor}
+          disabled={scanState === 'scanning'}
+        >
+          <Text style={styles.buttonText}>{scanState === 'scanning' ? 'Scanning…' : 'Scan'}</Text>
         </TouchableOpacity>
+        {scanState === 'nothing_found' && (
+          <Text style={styles.scanHint}>
+            No Progressor found. Make sure it&rsquo;s powered and nearby — it sleeps after a period
+            of inactivity, so a quick squeeze may wake it before scanning again.
+          </Text>
+        )}
         {progressorCandidates.map((candidate) => (
           <TouchableOpacity
             key={candidate.id}
@@ -206,8 +260,19 @@ const styles = StyleSheet.create({
   readoutBlock: { alignItems: 'center', justifyContent: 'center', paddingVertical: spacing.xl },
   force: { ...typography.displayForce, color: colors.textPrimary } as any,
   unit: { ...typography.label, color: colors.textTertiary } as any,
+  negativeForceHint: {
+    ...typography.caption,
+    color: colors.warning,
+    marginTop: spacing.sm,
+  } as any,
   statsRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: spacing.sm },
   stat: { ...typography.body, color: colors.textSecondary } as any,
+  statWarning: { color: colors.warning } as any,
+  scanHint: {
+    ...typography.caption,
+    color: colors.textTertiary,
+    marginTop: spacing.sm,
+  } as any,
   button: {
     marginTop: spacing.sm,
     paddingVertical: spacing.md,

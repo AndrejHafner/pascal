@@ -40,6 +40,13 @@ export function createTestDatabase(): SQLiteDatabase {
       return db.prepare(source).all(bindParams as never) as T[]
     },
 
+    getEachAsync: async function* <T>(source: string, ...params: unknown[]) {
+      const bindParams = normalizeParams(params)
+      for (const row of db.prepare(source).iterate(bindParams as never)) {
+        yield row as T
+      }
+    },
+
     prepareAsync: async (source: string) => {
       const stmt = db.prepare(source)
       return {

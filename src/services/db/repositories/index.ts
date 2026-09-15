@@ -6,6 +6,7 @@ import { EffortRepository } from './effortRepository'
 import { SampleRepository } from './sampleRepository'
 import { MaxRecordRepository } from './maxRecordRepository'
 import { SessionPlanRepository } from './sessionPlanRepository'
+import { AppSettingRepository } from './appSettingRepository'
 
 export {
   ExerciseRepository,
@@ -15,6 +16,7 @@ export {
   SampleRepository,
   MaxRecordRepository,
   SessionPlanRepository,
+  AppSettingRepository,
 }
 
 export interface Repositories {
@@ -25,6 +27,7 @@ export interface Repositories {
   samples: SampleRepository
   maxRecords: MaxRecordRepository
   sessionPlans: SessionPlanRepository
+  appSettings: AppSettingRepository
 }
 
 export function createRepositories(db: SQLiteDatabase): Repositories {
@@ -36,5 +39,6 @@ export function createRepositories(db: SQLiteDatabase): Repositories {
     samples: new SampleRepository(db),
     maxRecords: new MaxRecordRepository(db),
     sessionPlans: new SessionPlanRepository(db),
+    appSettings: new AppSettingRepository(db),
   }
 }

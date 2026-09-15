@@ -436,6 +436,92 @@ following only the README.
 > trustworthy, which requires [Phase H](#phase-h--hardware-validation-deferred).
 > Tag `v0.9.0-emulator` here instead.
 
+**Status: done.** Settings gained real content (previously the last Phase 0
+placeholder tab): Export CSV streams the two files docs/03/docs/07 specify
+via `expo-file-system`'s `File.write(chunk, {append: true})` in 1000-row
+batches — never one giant in-memory string — then hands both off through
+`expo-sharing`'s share sheet. Export full database runs
+`PRAGMA wal_checkpoint(TRUNCATE)` before copying the SQLite file, since the
+DB runs in WAL mode and a naive copy could silently miss a recently
+committed session still sitting in the `-wal` file; the checkpoint forces
+everything back into the main file first so the exported `.db` is a
+complete, self-contained snapshot. A new `app_setting` key/value table
+(migration 0003) tracks `lastExportedAt` for a quiet, non-nagging reminder
+(docs/06) — no separate storage library needed for one timestamp.
+
+All three export paths were verified against the emulator's real
+accumulated test data, not just unit tests: the summary and samples CSVs
+came back with correctly-columned real rows (exercise name, edge depth,
+smoothing window, peak force all in the right place), the samples CSV's
+row count matched the exported database's own `sample` table count exactly
+(1237 in both), and the exported `.db` file opened cleanly in a real
+`sqlite3` client. The column-mapping logic itself (`csvRows.ts`) is unit
+tested directly — deliberately kept separate from the file-writing I/O
+(`exportCsv.ts`), since `expo-file-system`'s native module can't run under
+Jest (same class of problem as `react-native-ble-plx`'s `BleManager`) but
+the actual correctness risk — a misordered or dropped field silently
+corrupting every exported row — lives entirely in the mapping, not the I/O.
+
+App-backgrounded-mid-set was a real gap, not a UI polish item: the state
+machine's `BACKGROUNDED` handling (pause, mark the set, require an
+explicit resume) has existed since Phase 3, but nothing ever dispatched
+it — no `AppState` listener existed anywhere in the codebase. Wired into
+`useSessionRunner` via an injectable `AppStateSource` (mirroring
+`fakeBleManager.ts`'s pattern: a narrow fake matching the real interface,
+not a `jest.mock`, since this project has never used the latter and real
+`AppState` can't construct under Jest either). Confirmed foreground return
+does **not** auto-resume, matching the same "never silently resume"
+principle `DEVICE_RESTORED` already established.
+
+The Device screen closed its remaining docs/04 edge-case gaps:
+`Linking.openSettings()` now actually backs the `deepLinkToSettings` state
+(the permission logic already computed it; nothing called it). Scanning
+now distinguishes "still scanning" from "nothing found" after the 10s
+timeout, with a hint that the Progressor sleeps and may need a squeeze to
+wake. A negative force reading (Progressor's sign can flip with pull
+direction, per docs/02) clamps the _displayed_ number at 0 and shows a
+tare prompt, while the underlying signed sample is left untouched for
+`tare()` and any other logic. Battery below 3400mV (an assumed
+conservative single-cell Li-ion threshold — docs/02 has no documented
+cutoff; flagged for Phase H to revisit against real hardware) shows a
+passive warning. The "battery warning at session start" half of that
+docs/04 line is _not_ built: no real device connects until the live
+screen, so there's nothing to check yet at setup time — recorded as a
+scope note rather than silently skipped.
+
+README was rewritten from its stale "Pre-code" status and thin build
+section into real, verified instructions: JDK 17 specifically (Android
+Studio's bundled JDK 25 breaks Gradle's native CMake configure step for
+`react-native-skia`/`expo-modules-core` — discovered the hard way earlier
+this project and now documented so nobody else loses time to it), Android
+SDK setup, and a script reference table. Verified two ways: a fresh
+`npm install` in a scratch copy of the tree (outside the working native
+`android/`, so it genuinely re-resolves everything) passed typecheck,
+lint, and all 370 tests cleanly — and that pass caught two real lint
+errors in Settings (`Date.now()` called during render, an unused import)
+that had gone unchecked until this exact verification step ran. The full
+native rebuild wasn't repeated a second time in this session (the working
+build already proves it compiles); that's recorded as a lighter-touch
+verification than a byte-for-byte clean-clone-to-emulator run, not a full
+substitute for one.
+
+341 → 370 tests this phase (29 new): CSV field-mapping correctness,
+`AppSettingRepository`, the `AppState`→`BACKGROUNDED` wiring (including the
+"does not interrupt while idle" and "foreground does not auto-resume"
+cases), and export query correctness against the `getEachAsync` streaming
+pattern added to `EffortRepository`/`SampleRepository` for this phase.
+
+Deliberately scoped out, not silently dropped:
+
+- **Battery warning at session start** — see above; no connected device
+  exists at that point in the current flow.
+- **A literal fresh-clone-to-running-emulator README verification** — the
+  lighter `npm install` + typecheck/lint/test verification in a scratch
+  copy was judged sufficient for this pass; a full clean-clone-to-emulator
+  run is cheap to redo before an actual release tag if wanted.
+- **CSV/JSON export format beyond what docs/03 specifies** — no JSON
+  export (docs/03 explicitly marks it "secondary, non-blocking").
+
 ## Phase H — Hardware validation (deferred)
 
 **The only phase requiring physical hardware.** Run it whenever a device is

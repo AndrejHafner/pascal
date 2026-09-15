@@ -110,3 +110,11 @@ CREATE TABLE session_plan (
 );
 
 CREATE UNIQUE INDEX idx_session_plan_session ON session_plan(session_id);
+
+-- Added in migration 0003 (docs/08-roadmap.md Phase 7). Generic key/value
+-- store for small app-level preferences — starting with lastExportedAt
+-- (docs/06 "periodically remind the user to export").
+CREATE TABLE app_setting (
+  key    TEXT PRIMARY KEY,
+  value  TEXT NOT NULL
+);

@@ -23,6 +23,7 @@ describe('migrator', () => {
 
     expect(names).toEqual(
       [
+        'app_setting',
         'effort',
         'exercise',
         'max_record',

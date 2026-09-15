@@ -11,14 +11,23 @@ within a target band. Both hands, every set.
 
 ## Status
 
-Pre-code. Specs in [`/docs`](docs/) are complete; implementation follows the
-phases in [`08-roadmap.md`](docs/08-roadmap.md).
+Specs in [`/docs`](docs/) are complete. Implementation is well underway,
+following the phases in [`08-roadmap.md`](docs/08-roadmap.md) — the full
+app (BLE emulator, session flow, history/progress, CSV and database
+export) runs end-to-end against the built-in device emulator. **Not yet
+validated against real hardware** — see
+[Phase H](docs/08-roadmap.md#phase-h--hardware-validation-deferred), which
+gates v1.0.0. Until then, treat the app as feature-complete but
+unverified: fine for exercising the UI, not yet for making real training
+decisions.
 
 ## Stack
 
 - **Framework:** Expo (React Native) with a custom dev build
-  (`expo-dev-client` + EAS Build) — not Expo Go, since BLE requires native
-  modules Expo Go can't load
+  (`expo-dev-client`, built locally via `expo run:android`/`expo run:ios`
+  — EAS Build is an alternative for CI/distribution but isn't required for
+  local development) — not Expo Go, since BLE requires native modules Expo
+  Go can't load
 - **Language:** TypeScript
 - **BLE:** `react-native-ble-plx`
 - **Storage:** SQLite via `expo-sqlite`, fully offline-first
@@ -39,12 +48,74 @@ phases in [`08-roadmap.md`](docs/08-roadmap.md).
 
 > **Expo Go will not work.** Pascal depends on `react-native-ble-plx`, a
 > native module Expo Go cannot load. You need a custom dev build
-> (`expo-dev-client` + EAS Build).
+> (`expo-dev-client`).
 
 BLE also cannot be tested in the iOS Simulator or Android Emulator — real
 Bluetooth requires physical devices. For development without hardware,
-Pascal includes a built-in device emulator that replays canned force
-sequences; see [`docs/02-ble-protocol.md`](docs/02-ble-protocol.md).
+Pascal includes a built-in device emulator (`EmulatorDevice`) that replays
+canned force sequences through the real pipeline — see
+[`docs/02-ble-protocol.md`](docs/02-ble-protocol.md) and
+[`docs/08-roadmap.md`](docs/08-roadmap.md#build-strategy-emulator-first).
+Every phase up to [Phase H](docs/08-roadmap.md#phase-h--hardware-validation-deferred)
+is built and verified this way — an Android emulator or iOS simulator is
+enough to run the whole app.
+
+### Prerequisites
+
+- **Node.js** 20+ and npm
+- **JDK 17** (Android builds only) — not whatever JDK Android Studio bundles
+  by default. As of writing, Android Studio ships JDK 25, which breaks
+  Gradle's native CMake configure step for `react-native-skia` and
+  `expo-modules-core` with an opaque `WARNING: A restricted method in
+java.lang.System has been called` failure. Install a JDK 17 separately
+  (e.g. `brew install --cask temurin@17` on macOS) and point `JAVA_HOME`
+  at it — don't rely on Android Studio's bundled one.
+- **Android SDK** — installed via Android Studio (SDK Platform, Build-Tools,
+  Platform-Tools, and an emulator system image; a Pixel AVD on a recent API
+  level works well). `ANDROID_HOME` must be set and
+  `$ANDROID_HOME/platform-tools` on `PATH` for `adb`.
+- **Xcode** (iOS builds only, macOS only)
+
+### Setup
+
+```sh
+npm install
+npm run typecheck && npm run lint && npm test   # confirm a clean baseline
+```
+
+### Running on Android
+
+1. Start an Android emulator (via Android Studio's Device Manager, or
+   `emulator -avd <name>` once one exists).
+2. `npm run android` — this builds the native project with Gradle (first
+   build compiles all native code and takes several minutes; subsequent
+   builds are much faster) and installs the dev client.
+3. Once it's running, `npm start` keeps the Metro bundler available for
+   fast-refresh iteration without rebuilding native code.
+
+### Running on iOS
+
+`npm run ios` (macOS + Xcode required). Same caveats as Android around
+native rebuilds after adding a package with native code.
+
+### Everyday scripts
+
+| Command                                 | What it does                                                                                        |
+| --------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| `npm start`                             | Metro bundler for an already-installed dev client                                                   |
+| `npm run android` / `npm run ios`       | Full native build + install                                                                         |
+| `npm run typecheck`                     | `tsc --noEmit`                                                                                      |
+| `npm run lint`                          | ESLint                                                                                              |
+| `npm run format` / `npm run format:fix` | Prettier check / write                                                                              |
+| `npm test`                              | Jest — pure logic and repository tests run against real SQLite (`better-sqlite3`), no device needed |
+
+### After installing a package with native code
+
+Any package with a native module (BLE, SQLite, Skia, file system, sharing,
+audio, haptics, Reanimated) needs a native rebuild, not just a Metro
+reload — re-run `npm run android` / `npm run ios`. A plain JS/TS change
+never needs this; Fast Refresh picks it up automatically while `npm start`
+is running.
 
 ## Contributing
 
